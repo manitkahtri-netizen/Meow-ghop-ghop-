@@ -1,0 +1,2192 @@
+<title>Muscle Tissue in Three Dimensions</title>
+
+<style>
+/* ============================================================
+   TOKENS — stains, ground, rules
+   Palette derived from H&E histology: eosin rose, hematoxylin
+   violet, myoglobin carmine, on a plum-biased neutral.
+   ============================================================ */
+:root {
+  --bg:        #F1ECF5;
+  --bg-panel:  #E6DEEC;
+  --bg-sunk:   #DCD3E4;
+  --fg:        #1B1220;
+  --fg-2:      #554A62;
+  --fg-3:      #877B93;
+  --rule:      #D2C8DC;
+  --rule-firm: #B9ABC7;
+  --accent:    #B8365A;
+  --accent-2:  #8B2F7A;
+
+  --c-skeletal:  #B8365A;
+  --c-cardiac:   #A83320;
+  --c-smooth:    #8A5C48;
+  --c-molecular: #5B45A8;
+
+  --shadow: 0 1px 2px rgba(27,18,32,.06), 0 8px 28px -12px rgba(27,18,32,.22);
+
+  /* The field of view is the field of view — constant in both themes. */
+  --stage:      #0A0610;
+  --stage-2:    #150E1D;
+  --stage-edge: #2A1F36;
+  --stage-fg:   #EFE7F4;
+  --stage-fg-2: #A798B3;
+  --stage-fg-3: #6E6079;
+
+  --ff-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", "P052", Georgia, "Liberation Serif", serif;
+  --ff-body: "Avenir Next", Avenir, "Segoe UI", Ubuntu, "Open Sans", "Liberation Sans", system-ui, sans-serif;
+  --ff-mono: ui-monospace, "SF Mono", "JetBrains Mono", "IBM Plex Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+
+  --measure: 34rem;
+  --pad-x: clamp(1.15rem, 4vw, 3.5rem);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #100B16;
+    --bg-panel:  #1A1222;
+    --bg-sunk:   #0B0710;
+    --fg:        #EDE5F3;
+    --fg-2:      #B2A4BE;
+    --fg-3:      #7B6E88;
+    --rule:      #2C2138;
+    --rule-firm: #3E2F4E;
+    --accent:    #E2687C;
+    --accent-2:  #C07AD0;
+
+    --c-skeletal:  #E2687C;
+    --c-cardiac:   #DC6046;
+    --c-smooth:    #CFA48D;
+    --c-molecular: #9A85E8;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 44px -20px rgba(0,0,0,.8);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:        #100B16;
+  --bg-panel:  #1A1222;
+  --bg-sunk:   #0B0710;
+  --fg:        #EDE5F3;
+  --fg-2:      #B2A4BE;
+  --fg-3:      #7B6E88;
+  --rule:      #2C2138;
+  --rule-firm: #3E2F4E;
+  --accent:    #E2687C;
+  --accent-2:  #C07AD0;
+  --c-skeletal:  #E2687C;
+  --c-cardiac:   #DC6046;
+  --c-smooth:    #CFA48D;
+  --c-molecular: #9A85E8;
+  --shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 44px -20px rgba(0,0,0,.8);
+}
+
+:root[data-theme="light"] {
+  --bg:        #F1ECF5;
+  --bg-panel:  #E6DEEC;
+  --bg-sunk:   #DCD3E4;
+  --fg:        #1B1220;
+  --fg-2:      #554A62;
+  --fg-3:      #877B93;
+  --rule:      #D2C8DC;
+  --rule-firm: #B9ABC7;
+  --accent:    #B8365A;
+  --accent-2:  #8B2F7A;
+  --c-skeletal:  #B8365A;
+  --c-cardiac:   #A83320;
+  --c-smooth:    #8A5C48;
+  --c-molecular: #5B45A8;
+  --shadow: 0 1px 2px rgba(27,18,32,.06), 0 8px 28px -12px rgba(27,18,32,.22);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+* { box-sizing: border-box; }
+body { margin: 0; }   /* restates the host reset so the file also opens standalone */
+
+.page {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--ff-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.page h1, .page h2, .page h3, .page h4 {
+  font-family: var(--ff-display);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.018em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+.page p { margin: 0; }
+
+.eyebrow {
+  font-family: var(--ff-mono);
+  font-size: .68rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.shell {
+  max-width: 82rem;
+  margin: 0 auto;
+  padding-inline: var(--pad-x);
+}
+
+/* ============================================================
+   MASTHEAD
+   ============================================================ */
+.masthead {
+  padding-block: clamp(3rem, 8vw, 6.5rem) clamp(2rem, 4vw, 3rem);
+  display: grid;
+  gap: 1.6rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 62rem) {
+  .masthead { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: end; gap: 3rem; }
+}
+
+.masthead h1 {
+  font-size: clamp(2.7rem, 7.2vw, 5.1rem);
+  letter-spacing: -0.03em;
+}
+.masthead h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+.masthead .deck {
+  color: var(--fg-2);
+  font-size: 1.05rem;
+  max-width: 32rem;
+}
+.masthead .deck strong { color: var(--fg); font-weight: 600; }
+.rule-top {
+  border-top: 1px solid var(--rule-firm);
+  padding-top: .7rem;
+  margin-bottom: 1rem;
+}
+
+/* ============================================================
+   THE SCOPE — slide rail · field · readout
+   ============================================================ */
+.scope {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 60rem) {
+  .scope { grid-template-columns: 8.6rem minmax(0, 1fr) 20.5rem; }
+}
+
+/* --- slide box --- */
+.slidebox {
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: row;
+  gap: .55rem;
+  padding: .7rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+@media (min-width: 60rem) {
+  .slidebox { flex-direction: column; overflow-x: visible; padding: .85rem .7rem; gap: .5rem; }
+}
+
+.slide {
+  flex: 0 0 auto;
+  width: 7rem;
+  display: grid;
+  gap: .45rem;
+  padding: .5rem .5rem .55rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--fg-2);
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+.slide:hover { background: color-mix(in srgb, var(--bg-sunk) 70%, transparent); color: var(--fg); }
+.slide:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.slide[aria-selected="true"] {
+  background: var(--bg-sunk);
+  border-color: var(--rule-firm);
+  color: var(--fg);
+}
+.slide .smear {
+  height: 2.2rem;
+  border-radius: 2px;
+  background: var(--stage-2);
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.slide .smear::after {
+  content: "";
+  position: absolute;
+  inset: 12% 8%;
+  opacity: .85;
+}
+.slide[data-scene="skeletal"] .smear::after {
+  background: repeating-linear-gradient(76deg, #E2687C 0 2px, #6B2438 2px 5px);
+}
+.slide[data-scene="cardiac"] .smear::after {
+  background:
+    radial-gradient(circle at 22% 40%, #DC6046 0 26%, transparent 27%),
+    radial-gradient(circle at 62% 66%, #DC6046 0 22%, transparent 23%),
+    linear-gradient(102deg, #7A2A1C 0 100%);
+}
+.slide[data-scene="smooth"] .smear::after {
+  background: repeating-linear-gradient(112deg, #CFA48D 0 3px, #6E4A38 3px 8px);
+  filter: blur(.4px);
+}
+.slide[data-scene="sarcomere"] .smear::after {
+  background:
+    repeating-linear-gradient(90deg, #9A85E8 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(0deg, #4B3A86 0 1px, transparent 1px 6px),
+    #17102B;
+}
+.slide .idx {
+  font-family: var(--ff-mono);
+  font-size: .6rem;
+  letter-spacing: .16em;
+  color: var(--fg-3);
+}
+.slide .nm { font-size: .82rem; line-height: 1.25; font-weight: 500; }
+
+/* --- field of view --- */
+.field {
+  position: relative;
+  background: var(--stage);
+  min-height: 24rem;
+  aspect-ratio: 16 / 11;
+  touch-action: none;
+}
+@media (min-width: 60rem) { .field { aspect-ratio: auto; min-height: 34rem; } }
+
+#stage { display: block; width: 100%; height: 100%; cursor: grab; }
+#stage:active { cursor: grabbing; }
+#stage:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.hud {
+  position: absolute;
+  pointer-events: none;
+  font-family: var(--ff-mono);
+  font-size: .64rem;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--stage-fg-2);
+}
+.hud-tl { top: .95rem; left: 1.1rem; display: grid; gap: .28rem; }
+.hud-tl .nm { color: var(--stage-fg); letter-spacing: .18em; font-size: .7rem; }
+.hud-tl .mag { color: var(--stage-fg-3); }
+
+.hud-metrics {
+  position: absolute;
+  top: .95rem; right: 1.1rem;
+  text-align: right;
+  font-family: var(--ff-mono);
+  font-size: .63rem;
+  letter-spacing: .08em;
+  color: var(--stage-fg-2);
+  display: grid;
+  gap: .22rem;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.hud-metrics b { color: var(--stage-fg); font-weight: 500; }
+
+.controls {
+  position: absolute;
+  left: 1.1rem; right: 1.1rem; bottom: .95rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+}
+.ctl {
+  font-family: var(--ff-mono);
+  font-size: .62rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--stage-fg-2);
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 2px;
+  padding: .38rem .6rem;
+  cursor: pointer;
+  transition: background .16s ease, color .16s ease, border-color .16s ease;
+}
+.ctl:hover { background: rgba(255,255,255,.1); color: var(--stage-fg); }
+.ctl:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ctl[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: #fff;
+}
+.ctl-spacer { flex: 1 1 auto; }
+
+.slider-ctl {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 2px;
+  padding: .3rem .65rem;
+}
+.slider-ctl label {
+  font-family: var(--ff-mono);
+  font-size: .62rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--stage-fg-2);
+  white-space: nowrap;
+}
+.slider-ctl input[type="range"] {
+  width: 8rem;
+  accent-color: var(--accent);
+  background: transparent;
+}
+.slider-ctl input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.hint {
+  position: absolute;
+  bottom: 3.35rem; left: 1.1rem;
+  font-family: var(--ff-mono);
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--stage-fg-3);
+  pointer-events: none;
+  transition: opacity .5s ease;
+}
+.field.touched .hint { opacity: 0; }
+
+/* --- readout --- */
+.readout {
+  background: var(--bg-panel);
+  padding: 1.35rem 1.25rem 1.5rem;
+  display: grid;
+  align-content: start;
+  gap: .85rem;
+  max-height: 34rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  box-shadow: inset 0 -2.4rem 1.7rem -1.7rem var(--bg-panel);
+}
+@media (max-width: 59.99rem) { .readout { max-height: none; } }
+
+.readout h2 { font-size: 1.45rem; }
+.readout .lede { color: var(--fg-2); font-size: .9rem; line-height: 1.55; }
+.readout .tag {
+  font-family: var(--ff-mono);
+  font-size: .6rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--scene-hue, var(--accent));
+}
+
+.features { margin: 0; display: grid; gap: 0; border-top: 1px solid var(--rule); }
+.feat {
+  border-bottom: 1px solid var(--rule);
+  padding: .6rem .5rem .65rem;
+  margin-inline: -.5rem;
+  transition: background .2s ease;
+}
+.feat dt {
+  font-weight: 600;
+  font-size: .84rem;
+  letter-spacing: -.005em;
+  display: flex;
+  align-items: baseline;
+  gap: .45rem;
+}
+.feat dt::before {
+  content: "";
+  width: .38rem; height: .38rem;
+  border-radius: 50%;
+  background: var(--scene-hue, var(--accent));
+  flex: 0 0 auto;
+  transform: translateY(-1px);
+}
+.feat dd { margin: .2rem 0 0 .83rem; font-size: .82rem; line-height: 1.5; color: var(--fg-2); }
+.feat.lit { background: color-mix(in srgb, var(--scene-hue, var(--accent)) 13%, transparent); }
+
+/* ============================================================
+   SHARED PROPERTIES BAND
+   ============================================================ */
+.props {
+  margin-top: clamp(3rem, 7vw, 5rem);
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border-block: 1px solid var(--rule);
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+.prop { background: var(--bg); padding: 1.1rem 1.1rem 1.25rem; }
+.prop h3 { font-size: 1.02rem; margin-bottom: .3rem; }
+.prop p { font-size: .82rem; color: var(--fg-2); line-height: 1.5; }
+.prop .n {
+  font-family: var(--ff-mono);
+  font-size: .6rem;
+  letter-spacing: .18em;
+  color: var(--fg-3);
+  display: block;
+  margin-bottom: .5rem;
+}
+
+/* ============================================================
+   ATLAS PLATES
+   ============================================================ */
+.atlas { padding-block: clamp(3.5rem, 8vw, 6rem) 0; display: grid; gap: clamp(3rem, 7vw, 5rem); }
+
+.plate { display: grid; gap: 1.5rem; }
+@media (min-width: 60rem) {
+  .plate { grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+}
+
+.plate-head { position: sticky; top: 1rem; display: grid; gap: .5rem; align-content: start; }
+@media (max-width: 59.99rem) { .plate-head { position: static; } }
+.plate-head .num {
+  font-family: var(--ff-mono);
+  font-size: .64rem;
+  letter-spacing: .2em;
+  color: var(--hue);
+}
+.plate-head h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); }
+.plate-head .where {
+  font-size: .82rem;
+  color: var(--fg-2);
+  border-top: 1px solid var(--rule);
+  padding-top: .6rem;
+  line-height: 1.5;
+}
+.plate-head .where b { color: var(--fg); font-weight: 600; display: block; font-size: .68rem; font-family: var(--ff-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--fg-3); margin-bottom: .25rem; }
+
+.plate-body { display: grid; gap: 1.6rem; }
+@media (min-width: 46rem) {
+  .plate-body { display: block; columns: 2; column-gap: 2.4rem; }
+  .plate-body > .blk { break-inside: avoid; margin-bottom: 1.7rem; }
+  .plate-body > .blk.span { column-span: all; }
+}
+
+.blk h3 {
+  font-family: var(--ff-mono);
+  font-size: .66rem;
+  font-weight: 500;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--hue);
+  margin-bottom: .55rem;
+  padding-bottom: .35rem;
+  border-bottom: 1px solid var(--rule);
+}
+.blk p { font-size: .89rem; color: var(--fg-2); line-height: 1.62; }
+.blk p + p { margin-top: .6rem; }
+.blk strong { color: var(--fg); font-weight: 600; }
+.blk ul { margin: 0; padding-left: 1.05rem; display: grid; gap: .38rem; }
+.blk li { font-size: .89rem; color: var(--fg-2); line-height: 1.55; }
+.blk li::marker { color: var(--hue); }
+.blk.span { break-inside: auto; }
+
+.keyline {
+  border-left: 2px solid var(--hue);
+  padding: .1rem 0 .1rem .85rem;
+  font-size: .89rem;
+  line-height: 1.55;
+  color: var(--fg-2);
+}
+.keyline b { color: var(--fg); }
+
+/* ============================================================
+   MATRIX
+   ============================================================ */
+.matrix { padding-block: clamp(3.5rem, 8vw, 6rem); }
+.matrix-head { display: grid; gap: .5rem; margin-bottom: 1.4rem; max-width: var(--measure); }
+.matrix-head h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); }
+.matrix-head p { color: var(--fg-2); font-size: .92rem; }
+
+.tablewrap {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--bg-panel);
+  scrollbar-width: thin;
+}
+table { border-collapse: collapse; width: 100%; min-width: 46rem; font-size: .84rem; }
+table.t-narrow { min-width: 30rem; font-size: .8rem; }
+table.t-narrow thead th { font-size: .58rem; white-space: normal; }
+thead th {
+  text-align: left;
+  padding: .8rem .9rem;
+  font-family: var(--ff-mono);
+  font-size: .63rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  font-weight: 500;
+  border-bottom: 1px solid var(--rule-firm);
+  white-space: nowrap;
+  background: var(--bg-panel);
+  position: sticky;
+  top: 0;
+}
+thead th:nth-child(2) { color: var(--c-skeletal); }
+thead th:nth-child(3) { color: var(--c-cardiac); }
+thead th:nth-child(4) { color: var(--c-smooth); }
+tbody th {
+  text-align: left;
+  font-weight: 600;
+  padding: .62rem .9rem;
+  color: var(--fg);
+  white-space: nowrap;
+  font-size: .82rem;
+}
+tbody td { padding: .62rem .9rem; color: var(--fg-2); vertical-align: top; }
+tbody tr + tr th, tbody tr + tr td { border-top: 1px solid var(--rule); }
+tbody tr:hover th, tbody tr:hover td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+tbody td b { color: var(--fg); font-weight: 600; }
+
+/* ============================================================
+   CLINIC
+   ============================================================ */
+.clinic { padding-bottom: clamp(3.5rem, 8vw, 6rem); }
+.clinic-head { max-width: var(--measure); display: grid; gap: .5rem; margin-bottom: 1.5rem; }
+.clinic-head h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); }
+.clinic-head p { color: var(--fg-2); font-size: .92rem; }
+.cards { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+@media (min-width: 52rem) { .cards { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+.card { background: var(--bg); padding: 1.15rem 1.15rem 1.3rem; display: grid; gap: .55rem; align-content: start; }
+.card .h {
+  font-family: var(--ff-mono);
+  font-size: .63rem;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+  color: var(--hue);
+}
+.card ul { margin: 0; padding-left: 1rem; display: grid; gap: .45rem; }
+.card li { font-size: .85rem; color: var(--fg-2); line-height: 1.5; }
+.card li::marker { color: var(--hue); }
+.card li b { color: var(--fg); font-weight: 600; }
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.foot {
+  border-top: 1px solid var(--rule);
+  padding-block: 1.6rem 3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--ff-mono);
+  font-size: .63rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+</style>
+
+<div class="page">
+
+  <div class="shell">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow rule-top">Histology · Specimen set 01–04 · Interactive</p>
+        <h1>Three muscles,<br>three <em>architectures</em></h1>
+      </div>
+      <p class="deck">
+        Skeletal, cardiac and smooth muscle all shorten by sliding actin past myosin — yet each solves
+        a different problem, and the solution is written into the shape of the cell. Turn the specimens
+        over below: <strong>drag to rotate, scroll to zoom, click any annotation</strong> to read what it does.
+      </p>
+    </header>
+  </div>
+
+  <div class="shell">
+    <section class="scope" aria-label="Interactive 3D specimen viewer">
+
+      <div class="slidebox" role="tablist" aria-label="Specimen">
+        <button class="slide" data-scene="skeletal" role="tab" aria-selected="true">
+          <span class="smear" aria-hidden="true"></span>
+          <span class="idx">01</span>
+          <span class="nm">Skeletal</span>
+        </button>
+        <button class="slide" data-scene="cardiac" role="tab" aria-selected="false">
+          <span class="smear" aria-hidden="true"></span>
+          <span class="idx">02</span>
+          <span class="nm">Cardiac</span>
+        </button>
+        <button class="slide" data-scene="smooth" role="tab" aria-selected="false">
+          <span class="smear" aria-hidden="true"></span>
+          <span class="idx">03</span>
+          <span class="nm">Smooth</span>
+        </button>
+        <button class="slide" data-scene="sarcomere" role="tab" aria-selected="false">
+          <span class="smear" aria-hidden="true"></span>
+          <span class="idx">04</span>
+          <span class="nm">Sarcomere</span>
+        </button>
+      </div>
+
+      <div class="field" id="field">
+        <canvas id="stage" tabindex="0" aria-label="Rotatable 3D model of the selected muscle tissue. Use arrow keys to rotate."></canvas>
+        <div class="hud hud-tl">
+          <span class="nm" id="hudName">Skeletal muscle</span>
+          <span class="mag" id="hudMag">Longitudinal · cut-away</span>
+        </div>
+        <div class="hud-metrics" id="hudMetrics"></div>
+        <div class="controls" id="controls"></div>
+        <p class="hint">Drag to rotate · scroll to zoom</p>
+      </div>
+
+      <aside class="readout" id="readout">
+        <p class="tag" id="roTag"></p>
+        <h2 id="roTitle"></h2>
+        <p class="lede" id="roLede"></p>
+        <dl class="features" id="roFeatures"></dl>
+      </aside>
+
+    </section>
+  </div>
+
+  <div class="shell">
+    <section class="props" aria-label="Properties shared by all muscle tissue">
+      <div class="prop">
+        <span class="n">SHARED 01</span>
+        <h3>Excitability</h3>
+        <p>The sarcolemma responds to a chemical or electrical stimulus by changing membrane potential.</p>
+      </div>
+      <div class="prop">
+        <span class="n">SHARED 02</span>
+        <h3>Contractility</h3>
+        <p>Actin and myosin generate force and shorten the cell — the property no other tissue has.</p>
+      </div>
+      <div class="prop">
+        <span class="n">SHARED 03</span>
+        <h3>Extensibility</h3>
+        <p>The cell can be stretched well beyond resting length without tearing.</p>
+      </div>
+      <div class="prop">
+        <span class="n">SHARED 04</span>
+        <h3>Elasticity</h3>
+        <p>After stretch or contraction it recoils to resting length, largely via titin and the collagen sheaths.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="shell">
+    <div class="atlas">
+
+      <!-- ===== PLATE 1 ===== -->
+      <article class="plate" style="--hue: var(--c-skeletal);">
+        <div class="plate-head">
+          <p class="num">PLATE 01</p>
+          <h2>Skeletal muscle</h2>
+          <p class="where"><b>Where</b>Attached to bone by tendons and aponeuroses; also tongue, diaphragm, upper third of the oesophagus, extraocular muscles, muscles of facial expression, and the external anal and urethral sphincters.</p>
+        </div>
+        <div class="plate-body">
+
+          <div class="blk">
+            <h3>The cell</h3>
+            <p>The unit is the <strong>muscle fibre</strong>: long, cylindrical and <strong>unbranched</strong>, 10–100 µm across and up to several centimetres long — sartorius fibres reach roughly 30 cm.</p>
+            <p>It is a <strong>multinucleate syncytium</strong> formed by the fusion of embryonic myoblasts. Hundreds of nuclei lie <strong>flattened against the sarcolemma at the periphery</strong>. That peripheral position is the single quickest way to identify skeletal muscle down a microscope.</p>
+            <p>Wedged between the sarcolemma and the external lamina sit <strong>satellite cells</strong> — quiescent myogenic stem cells, the source of what limited regeneration this tissue has.</p>
+          </div>
+
+          <div class="blk">
+            <h3>The sarcomere</h3>
+            <p>Myofibrils run the length of the fibre in register, so their banding reads straight across the whole cell.</p>
+            <ul>
+              <li><b>A band</b> — full length of the thick filaments plus overlap. Dark, <em>anisotropic</em>.</li>
+              <li><b>I band</b> — thin filaments only. Light, <em>isotropic</em>, bisected by the Z disc.</li>
+              <li><b>H zone</b> — thick filaments only, in the centre of the A band.</li>
+              <li><b>M line</b> — myomesin and creatine kinase, cross-linking thick filaments.</li>
+              <li><b>Z disc</b> — α-actinin, anchoring the thin filaments.</li>
+            </ul>
+            <p>Z disc to Z disc is one <strong>sarcomere</strong>, about 2.0–2.5 µm at rest.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Filaments</h3>
+            <p><strong>Thick</strong> — myosin II: two heavy chains folded into head, hinge and tail, plus four light chains. The ATPase sits in the head.</p>
+            <p><strong>Thin</strong> — an F-actin double helix carrying <strong>tropomyosin</strong> and the <strong>troponin complex</strong> (TnT binds tropomyosin, TnI inhibits, TnC binds Ca²⁺).</p>
+            <p><strong>Accessory</strong> — titin, the molecular spring running Z to M; nebulin, the thin-filament ruler; and <strong>dystrophin</strong>, which ties actin to the sarcolemma and external lamina and is the protein lost in Duchenne muscular dystrophy.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Membrane systems</h3>
+            <p><strong>T-tubules</strong> are deep sarcolemmal invaginations sitting at the <strong>A–I junction</strong>. The sarcoplasmic reticulum is extensive and ends in paired <strong>terminal cisternae</strong>.</p>
+            <p class="keyline">One T-tubule flanked by two terminal cisternae is a <b>TRIAD</b> — and there are <b>two triads per sarcomere</b>. Coupling here is mechanical: the DHP receptor acts as a voltage sensor and physically gates RyR1.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Connective tissue</h3>
+            <ul>
+              <li><b>Endomysium</b> — delicate reticular fibres around each fibre, carrying capillaries and nerve terminals.</li>
+              <li><b>Perimysium</b> — wraps bundles of fibres into <em>fascicles</em>; carries the larger vessels and nerves.</li>
+              <li><b>Epimysium</b> — dense irregular sheath around the whole muscle, continuous with the tendon.</li>
+            </ul>
+          </div>
+
+          <div class="blk">
+            <h3>Control</h3>
+            <p><strong>Voluntary</strong>, via somatic α-motor neurons. At the <strong>motor end plate</strong>, acetylcholine opens <strong>nicotinic</strong> receptors, producing an end-plate potential and then an action potential.</p>
+            <p>One neuron plus every fibre it supplies is a <strong>motor unit</strong> — around 1:3 in the extraocular muscles for fine control, closer to 1:1000 in gastrocnemius for gross power.</p>
+            <p>Sensation comes from <strong>muscle spindles</strong> (intrafusal fibres, reporting length) and <strong>Golgi tendon organs</strong> (reporting tension).</p>
+          </div>
+
+          <div class="blk span">
+            <h3>Fibre types</h3>
+            <div class="tablewrap">
+              <table class="t-narrow">
+                <thead>
+                  <tr><th scope="col">Feature</th><th scope="col" style="color:var(--fg-2)">Type I · slow oxidative</th><th scope="col" style="color:var(--fg-2)">Type IIa · fast oxidative–glycolytic</th><th scope="col" style="color:var(--fg-2)">Type IIx/IIb · fast glycolytic</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Colour</th><td>Red</td><td>Pink–red</td><td>White</td></tr>
+                  <tr><th scope="row">Myoglobin &amp; mitochondria</th><td>High</td><td>High</td><td>Low</td></tr>
+                  <tr><th scope="row">Capillary density</th><td>High</td><td>Intermediate</td><td>Low</td></tr>
+                  <tr><th scope="row">Glycogen</th><td>Low</td><td>Intermediate</td><td>High</td></tr>
+                  <tr><th scope="row">Contraction speed</th><td>Slow</td><td>Fast</td><td>Very fast</td></tr>
+                  <tr><th scope="row">Fatigue</th><td>Very resistant</td><td>Moderately resistant</td><td>Rapid</td></tr>
+                  <tr><th scope="row">Example</th><td>Soleus, postural muscle</td><td>Limb muscles</td><td>Extraocular, gastrocnemius bursts</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="blk span">
+            <h3>Behaviour</h3>
+            <p>Rapid, powerful, discontinuous contraction that <strong>fatigues</strong>. The refractory period is short, so twitches summate and <strong>tetanus is possible</strong>; force is graded by recruiting more motor units and by firing them faster. Fibres do not divide — the muscle grows by <strong>hypertrophy</strong>.</p>
+          </div>
+
+        </div>
+      </article>
+
+      <!-- ===== PLATE 2 ===== -->
+      <article class="plate" style="--hue: var(--c-cardiac);">
+        <div class="plate-head">
+          <p class="num">PLATE 02</p>
+          <h2>Cardiac muscle</h2>
+          <p class="where"><b>Where</b>The myocardium, and extending as sleeves into the walls of the great vessels entering the heart — the pulmonary veins and the venae cavae.</p>
+        </div>
+        <div class="plate-body">
+
+          <div class="blk">
+            <h3>The cell</h3>
+            <p><strong>Cardiomyocytes</strong> are short, <strong>branched</strong> cylinders roughly 15 µm by 85–100 µm.</p>
+            <p>Each has <strong>one — occasionally two — centrally placed nuclei</strong>, surrounded by a <strong>perinuclear clear zone</strong> holding glycogen, the Golgi apparatus and lipofuscin pigment that accumulates with age.</p>
+            <p>The sarcomeric organisation is identical to skeletal muscle, so cardiac muscle is <strong>striated</strong> — but the striations are finer and less regimented.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Intercalated discs</h3>
+            <p>The defining feature: step-like junctional complexes at the ends of the cells, replacing the Z disc.</p>
+            <ul>
+              <li><b>Fascia adherens</b> (transverse) — the major component; anchors the thin filaments of the terminal sarcomere so contractile force passes cell to cell.</li>
+              <li><b>Macula adherens / desmosomes</b> (transverse) — bind cells together and stop them pulling apart.</li>
+              <li><b>Gap junctions</b> (longitudinal) — connexon channels giving low-resistance ionic coupling.</li>
+            </ul>
+            <p class="keyline">The gap junctions make the myocardium a <b>functional syncytium</b> — coupled electrically, but still separate cells. It is not a true anatomical syncytium the way a skeletal fibre is.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Membrane systems</h3>
+            <p><strong>T-tubules are wider, more numerous, and sit at the Z disc</strong> rather than the A–I junction. The sarcoplasmic reticulum is less elaborate, with small expansions instead of true terminal cisternae.</p>
+            <p>One T-tubule plus one SR sac is a <strong>DYAD</strong>. Coupling is chemical, not mechanical: L-type Ca²⁺ influx triggers <strong>calcium-induced calcium release</strong> from RyR2 — so cardiac contraction is <strong>critically dependent on extracellular Ca²⁺</strong>.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Metabolism</h3>
+            <p>Mitochondria are enormous and lie in rows between the myofibrils, occupying <strong>30–40% of cell volume</strong> — against roughly 2% in a fast glycolytic skeletal fibre.</p>
+            <p>With abundant myoglobin, glycogen and lipid droplets and a dense capillary bed in the endomysium, the myocardium is <strong>obligately aerobic</strong>. That is why it does not fatigue — and why it infarcts when a coronary artery closes.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Rhythm and control</h3>
+            <p><strong>Involuntary and autorhythmic.</strong> The <strong>SA node</strong> sets the pace; the impulse runs to the AV node, the bundle of His, then the <strong>Purkinje fibres</strong> — modified cardiac cells that are larger and paler, glycogen-rich, with few peripheral myofibrils and fast conduction.</p>
+            <p>Nerves modulate but do not initiate: sympathetic β₁ raises rate and force, vagal M₂ slows it, and thyroxine and catecholamines act on top.</p>
+            <p class="keyline">The <b>absolute refractory period is long — about 250 ms</b>, spanning most of contraction. <b>Tetanus is therefore impossible</b>, which is exactly what guarantees the heart refills between beats.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Other features</h3>
+            <p>Atrial myocytes are <strong>endocrine</strong>: their granules release <strong>ANP</strong> and BNP, driving natriuresis, diuresis and vasodilation.</p>
+            <p>Force rises with end-diastolic fibre length — the <strong>Frank–Starling</strong> relationship.</p>
+            <p><strong>Regeneration is essentially absent.</strong> Infarcted myocardium heals by fibrous scarring, and the heart answers a chronic load by <strong>hypertrophy</strong> instead.</p>
+          </div>
+
+        </div>
+      </article>
+
+      <!-- ===== PLATE 3 ===== -->
+      <article class="plate" style="--hue: var(--c-smooth);">
+        <div class="plate-head">
+          <p class="num">PLATE 03</p>
+          <h2>Smooth muscle</h2>
+          <p class="where"><b>Where</b>Walls of hollow viscera and tubes — gut, airways from trachea to bronchioles, bladder and ureters, uterus and uterine tubes, the tunica media of blood vessels, iris and ciliary body, arrector pili, gland ducts and the splenic capsule.</p>
+        </div>
+        <div class="plate-body">
+
+          <div class="blk">
+            <h3>The cell</h3>
+            <p><strong>Fusiform</strong> — spindle-shaped, tapering to a point at each end, packed in staggered arrays so the broad belly of one cell lies against the tapered ends of its neighbours.</p>
+            <p>Size varies enormously: about 20 µm in a small vessel, 200 µm in the gut, and up to <strong>500 µm in the pregnant uterus</strong>.</p>
+            <p>One <strong>central, elongated nucleus</strong>. On contraction it is drawn into a characteristic <strong>corkscrew or cigar shape</strong> — visible in the model when the wave passes.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Contractile apparatus</h3>
+            <p><strong>Non-striated.</strong> There are no sarcomeres, no Z discs, no T-tubules and no troponin. Thick and thin filaments run <strong>obliquely</strong> in criss-crossing lattices, so the cell shortens with a corkscrew twist — by up to 70–80% of resting length, far more than any striated fibre.</p>
+            <ul>
+              <li><b>Dense bodies</b> — cytoplasmic anchors containing α-actinin; the functional equivalent of Z discs.</li>
+              <li><b>Dense plaques</b> — membrane-bound focal adhesions transmitting force to the matrix and to adjacent cells.</li>
+              <li><b>Intermediate filaments</b> — desmin, and vimentin in vascular smooth muscle, networking the dense bodies together.</li>
+            </ul>
+            <p><strong>Caveolae</strong> — flask-shaped surface pits — stand in for T-tubules. The SR is sparse, so contraction leans heavily on <strong>extracellular Ca²⁺</strong>.</p>
+          </div>
+
+          <div class="blk">
+            <h3>How it contracts</h3>
+            <p>A completely different switch from striated muscle:</p>
+            <ul>
+              <li>Ca²⁺ binds <strong>calmodulin</strong> — there is no troponin.</li>
+              <li>Ca²⁺–calmodulin activates <strong>myosin light chain kinase</strong>.</li>
+              <li>MLCK phosphorylates the myosin regulatory light chain, and cross-bridge cycling begins.</li>
+              <li>Myosin light chain phosphatase reverses it; Rho-kinase inhibits MLCP to sensitise the cell to Ca²⁺.</li>
+            </ul>
+            <p class="keyline">In the <b>latch state</b>, dephosphorylated cross-bridges stay attached — sustained tone at very low ATP cost. This is why a sphincter can hold for hours and an artery can hold tone for a lifetime.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Two functional types</h3>
+            <p><strong>Single-unit (visceral).</strong> Abundant gap junctions, so the layer behaves as a syncytium; only a few cells are innervated; spontaneous pacemaker slow waves and stretch sensitivity give coarse, wave-like activity. Gut, uterus, ureter, bladder, small arteries.</p>
+            <p><strong>Multi-unit.</strong> Few or no gap junctions; every cell is separately innervated; no spontaneous activity, so precise graded control. Iris, ciliary body, arrector pili, vas deferens, large elastic arteries, airway.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Control</h3>
+            <p><strong>Involuntary</strong> and autonomic. There is no true neuromuscular junction — axons carry <strong>varicosities</strong> that release transmitter <em>en passant</em>, diffusely into the extracellular space.</p>
+            <p>It also answers directly to <strong>stretch</strong> (the myogenic Bayliss response), to hormones such as oxytocin, angiotensin II and ADH, to local chemistry — NO, CO₂, H⁺, hypoxia, adenosine, histamine — and, in the gut, to the <strong>interstitial cells of Cajal</strong> that generate the slow waves.</p>
+          </div>
+
+          <div class="blk">
+            <h3>Two things it alone can do</h3>
+            <p><strong>Secrete.</strong> Smooth muscle cells make their own external lamina plus collagen types I, III and IV, elastin and proteoglycans. Vascular smooth muscle switches between a contractile and a synthetic phenotype — the switch at the centre of atherosclerosis.</p>
+            <p><strong>Divide.</strong> It has the best regenerative capacity of the three, growing by <strong>hyperplasia</strong> as well as hypertrophy — which is how the uterus does what it does in pregnancy.</p>
+          </div>
+
+        </div>
+      </article>
+
+    </div>
+  </div>
+
+  <div class="shell">
+    <section class="matrix">
+      <div class="matrix-head">
+        <p class="eyebrow">Comparison</p>
+        <h2>The whole set, side by side</h2>
+        <p>Every row below is a discriminator — a feature that tells one tissue from the other two.</p>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col">Skeletal</th>
+              <th scope="col">Cardiac</th>
+              <th scope="col">Smooth</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Cell shape</th><td>Long, cylindrical, unbranched</td><td>Short, cylindrical, <b>branched</b></td><td>Fusiform, tapered ends</td></tr>
+            <tr><th scope="row">Nuclei</th><td><b>Many, peripheral</b></td><td><b>One (or two), central</b></td><td><b>One, central</b></td></tr>
+            <tr><th scope="row">Striations</th><td>Present</td><td>Present</td><td><b>Absent</b></td></tr>
+            <tr><th scope="row">Sarcomeres</th><td>Yes</td><td>Yes</td><td>No — dense bodies instead</td></tr>
+            <tr><th scope="row">Cell junctions</th><td>None</td><td><b>Intercalated discs</b></td><td>Gap junctions (single-unit)</td></tr>
+            <tr><th scope="row">T-tubules</th><td>At A–I junction · <b>triads</b></td><td>At Z line · <b>dyads</b></td><td>Absent · <b>caveolae</b></td></tr>
+            <tr><th scope="row">Sarcoplasmic reticulum</th><td>Very extensive</td><td>Moderate</td><td>Sparse</td></tr>
+            <tr><th scope="row">Ca²⁺ receptor protein</th><td><b>Troponin C</b></td><td>Troponin C</td><td><b>Calmodulin</b></td></tr>
+            <tr><th scope="row">Ca²⁺ source</th><td>Almost entirely SR</td><td>SR + extracellular (CICR)</td><td>Largely <b>extracellular</b></td></tr>
+            <tr><th scope="row">Control</th><td><b>Voluntary</b>, somatic</td><td>Involuntary, <b>autorhythmic</b></td><td>Involuntary — autonomic, hormonal, myogenic</td></tr>
+            <tr><th scope="row">Pacemaker</th><td>No</td><td><b>Yes — SA node</b></td><td>Yes, in single-unit only</td></tr>
+            <tr><th scope="row">Speed of contraction</th><td>Fast</td><td>Intermediate</td><td>Slow</td></tr>
+            <tr><th scope="row">Fatigue</th><td>Yes</td><td>No — highly aerobic</td><td>No — latch state</td></tr>
+            <tr><th scope="row">Tetanus possible</th><td>Yes</td><td><b>No</b> — long refractory period</td><td>Sustained tone instead</td></tr>
+            <tr><th scope="row">Regeneration</th><td>Limited — satellite cells</td><td><b>Essentially none</b></td><td><b>Good</b> — cells divide</td></tr>
+            <tr><th scope="row">Connective tissue</th><td>Epi-, peri- and endomysium</td><td>Endomysium, capillary-dense</td><td>Fine reticular sheath</td></tr>
+            <tr><th scope="row">Embryonic origin</th><td>Mesoderm (somites)</td><td>Splanchnic mesoderm</td><td>Mesoderm — except iris muscles (neuroectoderm)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="shell">
+    <section class="clinic">
+      <div class="clinic-head">
+        <p class="eyebrow">Clinical correlation</p>
+        <h2>Where the structure gives way</h2>
+        <p>Each architecture fails in its own way, and the failure follows directly from the histology.</p>
+      </div>
+      <div class="cards">
+        <div class="card" style="--hue: var(--c-skeletal);">
+          <p class="h">Skeletal</p>
+          <ul>
+            <li><b>Duchenne / Becker muscular dystrophy</b> — loss of dystrophin, so the sarcolemma tears under its own contraction.</li>
+            <li><b>Myasthenia gravis</b> — antibodies against the nicotinic ACh receptor at the motor end plate; fatigable weakness.</li>
+            <li><b>Malignant hyperthermia</b> — RyR1 mutation; volatile anaesthetics trigger uncontrolled SR Ca²⁺ release.</li>
+            <li><b>Rhabdomyosarcoma</b> — the malignant tumour of skeletal muscle lineage.</li>
+          </ul>
+        </div>
+        <div class="card" style="--hue: var(--c-cardiac);">
+          <p class="h">Cardiac</p>
+          <ul>
+            <li><b>Myocardial infarction</b> — no regenerative capacity, so the territory heals as fibrous scar.</li>
+            <li><b>Troponin I and T</b> — cardiac-specific isoforms leak into serum; the diagnostic marker of infarction.</li>
+            <li><b>Hypertrophic and dilated cardiomyopathy</b> — mutations in sarcomeric proteins such as β-myosin heavy chain and myosin-binding protein C.</li>
+            <li><b>Arrhythmia</b> — disease of the gap-junction-coupled conducting system.</li>
+          </ul>
+        </div>
+        <div class="card" style="--hue: var(--c-smooth);">
+          <p class="h">Smooth</p>
+          <ul>
+            <li><b>Leiomyoma</b> — uterine fibroid; the commonest benign tumour in women, and a direct consequence of retained mitotic capacity.</li>
+            <li><b>Leiomyosarcoma</b> — its malignant counterpart.</li>
+            <li><b>Asthma</b> — bronchial smooth muscle hyperreactivity and hypertrophy.</li>
+            <li><b>Hypertension and atherosclerosis</b> — vascular smooth muscle switching from contractile to synthetic phenotype.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="shell">
+    <footer class="foot">
+      <span>Muscle tissue · specimens 01–04</span>
+      <span>Rendered live — no images, no libraries</span>
+    </footer>
+  </div>
+
+</div>
+
+<script>
+(function () {
+"use strict";
+
+/* ==========================================================================
+   A small painter's-algorithm 3D renderer on canvas 2D.
+   Every specimen below is generated as geometry each frame, so contraction
+   is real deformation rather than a sprite swap.
+   ========================================================================== */
+
+const canvas  = document.getElementById('stage');
+const ctx     = canvas.getContext('2d', { alpha: false });
+const field   = document.getElementById('field');
+const TAU     = Math.PI * 2;
+const clamp   = (v, a, b) => v < a ? a : (v > b ? b : v);
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- camera ---------- */
+const cam = { yaw: 0.42, pitch: 0.24, dist: 11, fov: 1.02 };
+let CY = 1, SY = 0, CP = 1, SP = 0, W = 800, H = 550, DPR = 1;
+
+function camSync() {
+  CY = Math.cos(cam.yaw); SY = Math.sin(cam.yaw);
+  CP = Math.cos(cam.pitch); SP = Math.sin(cam.pitch);
+}
+
+function viewPt(p, out) {
+  const x0 = p[0], y0 = p[1], z0 = p[2];
+  const x = x0 * CY - z0 * SY;
+  const z1 = x0 * SY + z0 * CY;
+  out[0] = x;
+  out[1] = y0 * CP - z1 * SP;
+  out[2] = y0 * SP + z1 * CP;
+  return out;
+}
+
+let FOCAL = 600;
+function projX(vx, depth) { return W * 0.5 + vx * FOCAL / depth; }
+function projY(vy, depth) { return H * 0.5 - vy * FOCAL / depth; }
+
+/* ---------- face pool ---------- */
+const pool = [];
+let nPool = 0;
+const active = [];
+const overlay = [];   /* central nuclei — drawn last so they read through the cell */
+function takeFace() {
+  let f = pool[nPool];
+  if (!f) { f = pool[nPool] = { p: new Float32Array(24), n: 0, d: 0, fill: '', line: null, lw: 1 }; }
+  nPool++;
+  return f;
+}
+
+/* ---------- lighting ---------- */
+const LX = -0.36, LY = 0.50, LZ = 0.79;            // key light, in view space
+const HX = -0.22, HY = 0.30, HZ = 0.93;            // halfway vector for sheen
+const RIM = [86, 62, 138];                          // cool violet rim
+
+const _v = [];
+for (let i = 0; i < 16; i++) _v.push(new Float32Array(3));
+
+const NOOPT = {};
+
+/* Emits a polygon whose vertices already sit in _v[0..m-1] (view space). */
+function emitView(m, base, o) {
+  o = o || NOOPT;
+  const a0 = _v[0], a1 = _v[1], a2 = _v[2];
+  let ux = a1[0] - a0[0], uy = a1[1] - a0[1], uz = a1[2] - a0[2];
+  let vx = a2[0] - a0[0], vy = a2[1] - a0[1], vz = a2[2] - a0[2];
+  let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+  const len = Math.hypot(nx, ny, nz);
+  if (len < 1e-9) return;
+  nx /= len; ny /= len; nz /= len;
+  if (nz <= 0) {
+    if (!o.dbl) return;
+    nx = -nx; ny = -ny; nz = -nz;
+  }
+
+  let dsum = 0, sx = 0, sy = 0;
+  const f = takeFace();
+  for (let i = 0; i < m; i++) {
+    const p = _v[i];
+    const d = cam.dist - p[2];
+    if (d < 0.35) { nPool--; return; }
+    const px = projX(p[0], d), py = projY(p[1], d);
+    f.p[i * 2] = px; f.p[i * 2 + 1] = py;
+    sx += px; sy += py;
+    dsum += d;
+  }
+  f.n = m;
+  f.d = dsum / m;
+
+  /* Nudge each vertex a third of a pixel away from the face centre. Adjacent
+     quads then overlap instead of leaving an antialiased hairline gap — the
+     same result a same-colour stroke gives, at half the rasterisation cost. */
+  sx /= m; sy /= m;
+  for (let i = 0; i < m; i++) {
+    const dx = f.p[i * 2] - sx, dy = f.p[i * 2 + 1] - sy;
+    const L2 = Math.hypot(dx, dy);
+    if (L2 > 0.001) {
+      const e = 0.36 / L2;
+      f.p[i * 2] += dx * e;
+      f.p[i * 2 + 1] += dy * e;
+    }
+  }
+
+  const diff = Math.max(0, nx * LX + ny * LY + nz * LZ);
+  const rimf = Math.pow(1 - Math.min(1, nz), 3) * (o.rim === undefined ? 0.55 : o.rim);
+  const sp   = Math.pow(Math.max(0, nx * HX + ny * HY + nz * HZ), 30) * (o.gloss === undefined ? 0.38 : o.gloss);
+  const k    = (o.amb === undefined ? 0.27 : o.amb) + 0.80 * diff;
+  const em   = o.glow || 0;
+
+  const r = clamp(base[0] * k + RIM[0] * rimf + 255 * sp + base[0] * em, 0, 255) | 0;
+  const g = clamp(base[1] * k + RIM[1] * rimf + 255 * sp + base[1] * em, 0, 255) | 0;
+  const b = clamp(base[2] * k + RIM[2] * rimf + 255 * sp + base[2] * em, 0, 255) | 0;
+  const al = o.alpha === undefined ? 1 : o.alpha;
+
+  f.fill = al >= 1 ? 'rgb(' + r + ',' + g + ',' + b + ')'
+                   : 'rgba(' + r + ',' + g + ',' + b + ',' + al + ')';
+  f.line = null;
+  f.lw = 0.7;
+  (o.over ? overlay : active).push(f);
+}
+
+function quadW(a, b, c, d, base, o) {
+  viewPt(a, _v[0]); viewPt(b, _v[1]); viewPt(c, _v[2]); viewPt(d, _v[3]);
+  emitView(4, base, o);
+}
+function triW(a, b, c, base, o) {
+  viewPt(a, _v[0]); viewPt(b, _v[1]); viewPt(c, _v[2]);
+  emitView(3, base, o);
+}
+
+/* Free-floating 3D polyline, sorted with the faces. */
+function line3D(pts, color, width) {
+  const f = takeFace();
+  let dsum = 0;
+  const m = Math.min(pts.length, 12);
+  for (let i = 0; i < m; i++) {
+    viewPt(pts[i], _v[0]);
+    const d = cam.dist - _v[0][2];
+    if (d < 0.35) { nPool--; return; }
+    f.p[i * 2] = projX(_v[0][0], d);
+    f.p[i * 2 + 1] = projY(_v[0][1], d);
+    dsum += d;
+  }
+  f.n = m; f.d = dsum / m; f.fill = null; f.line = color; f.lw = width || 1;
+  active.push(f);
+}
+
+/* ---------- geometry: generalised tube ---------- */
+const ringA = [], ringB = [];
+for (let i = 0; i <= 40; i++) { ringA.push(new Float32Array(3)); ringB.push(new Float32Array(3)); }
+const _p0 = new Float32Array(3), _p1 = new Float32Array(3);
+const _T = new Float32Array(3), _N = new Float32Array(3), _B = new Float32Array(3);
+
+function frameAt(path, t) {
+  const e = 0.004;
+  const a = path(Math.max(0, t - e)), b = path(Math.min(1, t + e));
+  let tx = b[0] - a[0], ty = b[1] - a[1], tz = b[2] - a[2];
+  const L = Math.hypot(tx, ty, tz) || 1;
+  tx /= L; ty /= L; tz /= L;
+  let ux = 0, uy = 1, uz = 0;
+  if (Math.abs(ty) > 0.94) { ux = 0; uy = 0; uz = 1; }
+  let nx = uy * tz - uz * ty, ny = uz * tx - ux * tz, nz = ux * ty - uy * tx;
+  const nl = Math.hypot(nx, ny, nz) || 1;
+  nx /= nl; ny /= nl; nz /= nl;
+  _T[0] = tx; _T[1] = ty; _T[2] = tz;
+  _N[0] = nx; _N[1] = ny; _N[2] = nz;
+  _B[0] = ty * nz - tz * ny; _B[1] = tz * nx - tx * nz; _B[2] = tx * ny - ty * nx;
+}
+
+/*  o = { path, radius, color, ts | segs, radial, a0, a1, twist, oval,
+          alpha, gloss, rim, amb, glow, dbl, capEnd, capStart }        */
+function tube(o) {
+  const path = o.path;
+  const radial = o.radial || 10;
+  const a0 = o.a0 === undefined ? 0 : o.a0;
+  const a1 = o.a1 === undefined ? TAU : o.a1;
+  const closed = Math.abs((a1 - a0) - TAU) < 1e-6;
+  const nA = closed ? radial : radial;
+  const dA = (a1 - a0) / nA;
+  const twist = o.twist || 0;
+  const oval = o.oval || 0;
+  const radFn = typeof o.radius === 'function' ? o.radius : () => o.radius;
+  const colFn = typeof o.color === 'function' ? o.color : () => o.color;
+  const ts = o.ts || (function () { const n = o.segs || 12, out = []; for (let i = 0; i <= n; i++) out.push(i / n); return out; })();
+
+  let prev = null, cur = ringA, other = ringB;
+  const cnt = closed ? nA : nA + 1;
+
+  for (let s = 0; s < ts.length; s++) {
+    const t = ts[s];
+    const P = path(t);
+    frameAt(path, t);
+    const r = radFn(t);
+    for (let j = 0; j < cnt; j++) {
+      const a = a0 + j * dA + twist * t;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const rr = r * (1 + oval * Math.cos(2 * a));
+      const v = cur[j];
+      v[0] = P[0] + _N[0] * ca * rr + _B[0] * sa * rr;
+      v[1] = P[1] + _N[1] * ca * rr + _B[1] * sa * rr;
+      v[2] = P[2] + _N[2] * ca * rr + _B[2] * sa * rr;
+    }
+    if (prev) {
+      const c = colFn((ts[s] + ts[s - 1]) * 0.5, s - 1);
+      if (c) {
+        for (let j = 0; j < cnt; j++) {
+          const k = (j + 1) % cnt;
+          if (!closed && j === cnt - 1) break;
+          quadW(prev[j], prev[k], cur[k], cur[j], c, o);
+        }
+      }
+    }
+    prev = cur; cur = (cur === ringA) ? ringB : ringA;
+  }
+
+  if (o.capEnd || o.capStart) {
+    const capCol = o.capColor || [40, 24, 34];
+    const capO = { alpha: o.alpha, gloss: 0.08, rim: 0.25, amb: 0.45 };
+    if (o.capEnd) {
+      const P = path(1);
+      for (let j = 0; j < cnt; j++) {
+        const k = (j + 1) % cnt;
+        if (!closed && j === cnt - 1) break;
+        triW(P, prev[j], prev[k], capCol, capO);
+      }
+    }
+  }
+}
+
+/* ---------- geometry: ellipsoid ---------- */
+function ellipsoid(c, rx, ry, rz, base, o, slices, stacks) {
+  slices = slices || 9; stacks = stacks || 6;
+  o = o || NOOPT;
+  const P = (u, v) => {
+    const sv = Math.sin(v), cv = Math.cos(v);
+    return [c[0] + rx * sv * Math.cos(u), c[1] + ry * cv, c[2] + rz * sv * Math.sin(u)];
+  };
+  for (let i = 0; i < slices; i++) {
+    const u = i / slices * TAU, u2 = (i + 1) / slices * TAU;
+    for (let j = 0; j < stacks; j++) {
+      const v = j / stacks * Math.PI, v2 = (j + 1) / stacks * Math.PI;
+      quadW(P(u, v), P(u2, v), P(u2, v2), P(u, v2), base, o);
+    }
+  }
+}
+
+/* ---------- labels ---------- */
+let labels = [], labelRects = [];
+function label(pos, text, dx, dy, key) { labels.push({ pos, text, dx, dy, key }); }
+
+/* ==========================================================================
+   Specimen 01 — SKELETAL
+   ========================================================================== */
+const EOSIN   = [216, 106, 122];
+const NUC     = [128,  98, 236];
+const PERI    = [212, 156, 176];
+const EPI     = [178, 124, 148];
+const ENDO    = [238, 206, 216];
+
+function bandRings(nSarc, c) {
+  /* Bands are built at true widths, so the A band holds constant while the
+     I band and H zone narrow — the sliding-filament signature. The sarcomere
+     COUNT is fixed, which is what makes the whole fibre shorten. */
+  const A = 0.85;
+  const Ih = 0.30 * (1 - c) + 0.050 * c;
+  const Zh = 0.030;
+  const Hh = 0.17 * (1 - c);
+  const seg = [
+    [Zh, 0.38], [Ih - Zh, 1.26], [A / 2 - Hh, 0.66], [2 * Hh, 0.97],
+    [A / 2 - Hh, 0.66], [Ih - Zh, 1.26], [Zh, 0.38]
+  ];
+  const sarc = A + 2 * Ih;
+  const xs = [], tones = [];
+  let x = -nSarc * sarc / 2;
+  xs.push(x);
+  for (let s = 0; s < nSarc; s++) {
+    for (let k = 0; k < seg.length; k++) {
+      if (seg[k][0] < 0.006) continue;
+      x += seg[k][0];
+      xs.push(x);
+      tones.push(seg[k][1]);
+    }
+  }
+  return { xs, tones, len: nSarc * sarc, sarc, A, Ih, Hh };
+}
+
+function striatedFibre(cy, cz, R, band, opts) {
+  const half = band.len / 2;
+  const ts = band.xs.map(x => (x + half) / band.len);
+  const path = t => [ -half + t * band.len, cy, cz ];
+  tube({
+    path, radius: () => R, ts, radial: opts.radial || 9,
+    color: (t, i) => {
+      const k = band.tones[Math.min(i, band.tones.length - 1)];
+      return [EOSIN[0] * k, EOSIN[1] * k, EOSIN[2] * k];
+    },
+    gloss: 0.42, rim: 0.6, alpha: opts.alpha, capEnd: true, capColor: [96, 44, 56]
+  });
+}
+
+function sceneSkeletal(T, S) {
+  const c = S.anim ? (0.5 - 0.5 * Math.cos(Math.max(0, Math.sin(T * 1.05)) * Math.PI)) : S.contract;
+  S.c = c;
+  const NSARC = 5;
+  const band = bandRings(NSARC, c);
+  const L = band.len;
+  const fat = Math.sqrt((NSARC * 1.45) / L);   /* the belly bulges as it shortens */
+  const Rf = 0.32 * fat;
+  const Rfas = 0.86 * fat;
+  const Repi = 2.15 * fat;
+  const half = L / 2;
+
+  const fasc = [
+    { y:  0.62 * fat, z:  0.90 * fat, open: true },
+    { y: -1.00 * fat, z:  0.18 * fat, open: false },
+    { y:  0.34 * fat, z: -1.05 * fat, open: false }
+  ];
+
+  /* epimysium — cut open toward the viewer */
+  tube({
+    path: t => [-half - 0.15 + t * (L + 0.3), 0, 0], radius: () => Repi,
+    segs: 4, radial: 22, a0: 1.02 * Math.PI, a1: 2.46 * Math.PI,
+    color: EPI, alpha: 0.26, dbl: true, gloss: 0.1, rim: 1.0, amb: 0.46
+  });
+
+  /* the three fascicles */
+  fasc.forEach((F) => {
+    tube({
+      path: t => [-half - 0.05 + t * (L + 0.1), F.y, F.z], radius: () => Rfas,
+      segs: 4, radial: 15,
+      a0: F.open ? 1.02 * Math.PI : 0, a1: F.open ? 2.48 * Math.PI : TAU,
+      color: PERI, alpha: F.open ? 0.30 : 0.26, dbl: true, gloss: 0.12, rim: 0.95, amb: 0.48
+    });
+  });
+
+  /* detailed fibres inside the opened fascicle */
+  const F0 = fasc[0];
+  const inner = [
+    { dy:  0.06, dz:  0.42 }, { dy: -0.40, dz: -0.14 }, { dy:  0.40, dz: -0.20 }
+  ];
+  inner.forEach((f, i) => {
+    const y = F0.y + f.dy * fat, z = F0.z + f.dz * fat;
+    striatedFibre(y, z, Rf, band, { radial: 14 });
+
+    /* peripheral nuclei — flattened against the sarcolemma, bulging outward */
+    const seeds = [0.17, 0.47, 0.79];
+    seeds.forEach((s, k) => {
+      const ang = 1.30 + ((i * 0.62 + k * 1.13) % 1) * 1.55;   /* biased to the lit surface */
+      const rr = Rf - 0.015 * fat;
+      ellipsoid(
+        [-half + s * L + i * 0.29, y + Math.sin(ang) * rr, z - Math.cos(ang) * rr],
+        0.27, 0.115 * fat, 0.115 * fat, NUC,
+        { gloss: 0.55, rim: 0.45, amb: 0.40, glow: 0.10 }, 9, 6
+      );
+    });
+  });
+
+  /* one endomysial sleeve, drawn around the top fibre */
+  const y0 = F0.y + inner[0].dy * fat, z0 = F0.z + inner[0].dz * fat;
+  tube({
+    path: t => [-half + t * L, y0, z0], radius: () => Rf + 0.10 * fat,
+    segs: 3, radial: 13, color: ENDO, alpha: 0.17, dbl: true, gloss: 0.05, rim: 1.1, amb: 0.55
+  });
+
+  /* plain fibres in the two closed fascicles, hinting at the pattern */
+  for (let i = 1; i < 3; i++) {
+    const F = fasc[i];
+    for (let k = 0; k < 3; k++) {
+      const a = k / 3 * TAU + i;
+      const y = F.y + Math.sin(a) * 0.40 * fat, z = F.z - Math.cos(a) * 0.40 * fat;
+      tube({
+        path: t => [-half + t * L, y, z], radius: () => Rf * 0.92,
+        segs: 3, radial: 8, color: [EOSIN[0] * 0.72, EOSIN[1] * 0.72, EOSIN[2] * 0.72],
+        gloss: 0.3, rim: 0.4, amb: 0.20
+      });
+    }
+  }
+
+  if (S.labels) {
+    label([-half + 0.9, -Repi * 0.72, Repi * 0.66], 'Epimysium', -104, 44, 'epimysium');
+    label([2.6, fasc[1].y - Rfas * 0.86, fasc[1].z + Rfas * 0.42], 'Perimysium', 66, 58, 'perimysium');
+    label([-half + 0.35, F0.y + Rfas * 0.72, F0.z + Rfas * 0.5], 'Fascicle', -96, -52, 'fascicle');
+    label([1.3, y0 + Rf, z0], 'Muscle fibre', 92, -70, 'fibre');
+    label([-2.4, y0 + Rf + 0.11, z0], 'Endomysium', -128, -26, 'endomysium');
+    label([-half + 0.17 * L + 0.29, F0.y + inner[1].dy * fat + Math.sin(1.30) * Rf,
+           F0.z + inner[1].dz * fat - Math.cos(1.30) * Rf],
+          'Peripheral nuclei', -150, 20, 'nuclei');
+    label([3.0, F0.y + inner[2].dy * fat - Rf * 0.5, F0.z + inner[2].dz * fat + Rf * 0.7],
+          'A and I bands', 84, 26, 'bands');
+  }
+
+  return [
+    ['Sarcomere', (band.sarc * 1.738).toFixed(2) + ' µm'],
+    ['Fibre length', (100 - c * 34).toFixed(0) + ' % of rest'],
+    ['Nuclei', 'peripheral']
+  ];
+}
+
+/* ==========================================================================
+   Specimen 02 — CARDIAC
+   ========================================================================== */
+const CARD  = [212, 104, 78];
+const DISC  = [58, 24, 30];
+const CNUC  = [140, 112, 228];
+
+const cardiacRows = [
+  { y:  1.20, z:  0.30, xs: [-4.0, -1.55, 0.95, 3.60], ph: 0.0 },
+  { y:  0.00, z: -0.40, xs: [-3.7, -1.10, 1.45, 4.00], ph: 1.7 },
+  { y: -1.20, z:  0.24, xs: [-4.1, -1.75, 0.60, 3.40], ph: 3.1 }
+];
+const cardiacBranches = [
+  { r0: 0, r1: 1, x: -0.35 }, { r0: 1, r1: 2, x:  2.30 },
+  { r0: 0, r1: 1, x:  2.95 }, { r0: 1, r1: 2, x: -2.60 }
+];
+
+function discBand(cx, y, z, R, hw, amp) {
+  const n = 18;
+  const zig = a => amp * (Math.round(Math.sin(a * 3) * 1.4) / 1.4);
+  for (let i = 0; i < n; i++) {
+    const a = i / n * TAU, b = (i + 1) / n * TAU;
+    const xa = cx + zig(a), xb = cx + zig(b);
+    const pa = [y + Math.sin(a) * R, z - Math.cos(a) * R];
+    const pb = [y + Math.sin(b) * R, z - Math.cos(b) * R];
+    quadW([xa - hw, pa[0], pa[1]], [xa + hw, pa[0], pa[1]],
+          [xb + hw, pb[0], pb[1]], [xb - hw, pb[0], pb[1]],
+          DISC, { amb: 0.5, gloss: 0.5, rim: 0.35 });
+  }
+}
+
+function sceneCardiac(T, S) {
+  const rate = S.rate || 1;
+  const beatOf = ph => {
+    const u = ((T * 0.85 * rate + ph) % 1 + 1) % 1;
+    if (u < 0.16) return Math.sin(u / 0.16 * Math.PI * 0.5);
+    if (u < 0.42) return Math.cos((u - 0.16) / 0.26 * Math.PI * 0.5) * 0.98;
+    return 0;
+  };
+  const R0 = 0.30;
+
+  cardiacRows.forEach((row, ri) => {
+    for (let ci = 0; ci < row.xs.length - 1; ci++) {
+      const xa0 = row.xs[ci], xb0 = row.xs[ci + 1];
+      const mid = (xa0 + xb0) / 2;
+      const beat = S.anim ? beatOf(-mid * 0.055 + ri * 0.02) : S.contract;
+      const sh = 1 - 0.085 * beat;
+      const R = R0 / Math.sqrt(sh) * (1 + 0.02 * beat);
+      const xa = mid + (xa0 - mid) * sh, xb = mid + (xb0 - mid) * sh;
+      const len = xb - xa;
+      const path = t => [xa + t * len, row.y + 0.07 * Math.sin(t * 3.2 + row.ph), row.z];
+      const radius = t => R * (0.86 + 0.14 * Math.sin(Math.PI * t)) *
+                          (1 + 0.22 * Math.exp(-Math.pow((t - 0.5) * 5, 2)));
+
+      const per = 0.36 * sh;
+      const ts = [];
+      const nb = Math.max(6, Math.round(len / per * 4));
+      for (let i = 0; i <= nb; i++) ts.push(i / nb);
+
+      tube({
+        path, radius, ts, radial: 10,
+        color: (t) => {
+          const x = xa + t * len;
+          const u = ((x / per) % 1 + 1) % 1;
+          let k = (u < 0.12) ? 0.74 : (u < 0.50 ? 1.10 : (u < 0.62 ? 0.78 : 1.04));
+          k *= 1 + 0.10 * beat;
+          /* the perinuclear clear zone, pale in the middle of the cell */
+          k *= 1 + 0.16 * Math.exp(-Math.pow((t - 0.5) * 4.2, 2));
+          return [CARD[0] * k, CARD[1] * k, CARD[2] * k];
+        },
+        gloss: 0.45, rim: 0.6, glow: beat * 0.10,
+        capEnd: ci === row.xs.length - 2, capColor: [92, 38, 30]
+      });
+
+      /* one central nucleus, laid over the cell so it reads through the sarcoplasm */
+      const P = path(0.5);
+      ellipsoid(P, 0.34 * sh, 0.155, 0.155, CNUC,
+        { gloss: 0.5, rim: 0.35, amb: 0.46, glow: 0.16, alpha: 0.66, over: true }, 10, 6);
+
+      if (ci > 0) discBand(xa, row.y + 0.07 * Math.sin(row.ph), row.z, R * 0.94, 0.040, 0.150);
+    }
+  });
+
+  /* branches — the anastomosing network */
+  cardiacBranches.forEach(br => {
+    const A = cardiacRows[br.r0], B = cardiacRows[br.r1];
+    const beat = S.anim ? beatOf(-br.x * 0.055) : S.contract;
+    const sh = 1 - 0.085 * beat;
+    const R = 0.21 / Math.sqrt(sh);
+    const path = t => [
+      br.x + 0.42 * Math.sin(t * Math.PI) * 0.6 + t * 0.30,
+      A.y + (B.y - A.y) * t,
+      A.z + (B.z - A.z) * t
+    ];
+    tube({
+      path, radius: t => R * (0.75 + 0.45 * Math.sin(Math.PI * t * 0.9 + 0.3)),
+      segs: 8, radial: 9,
+      color: [CARD[0] * 0.92, CARD[1] * 0.92, CARD[2] * 0.92],
+      gloss: 0.4, rim: 0.55, glow: beat * 0.10
+    });
+  });
+
+  if (S.labels) {
+    label([-1.55, cardiacRows[0].y + 0.36, cardiacRows[0].z], 'Intercalated disc', 30, -78, 'disc');
+    label([3.0, cardiacRows[0].y, cardiacRows[0].z + 0.32], 'Branched cell', 96, -34, 'branch');
+    label([-2.4, cardiacRows[1].y + 0.18, cardiacRows[1].z], 'Central nucleus', -152, -46, 'nucleus');
+    label([-0.05, (cardiacRows[0].y + cardiacRows[1].y) / 2, 0.1], 'Gap junctions couple the cells', -96, 96, 'gap');
+    label([2.0, cardiacRows[2].y - 0.34, cardiacRows[2].z], 'Fine striations', 84, 54, 'striation');
+  }
+
+  const bpm = Math.round(51 * rate);
+  return [
+    ['Rhythm', bpm + ' bpm'],
+    ['Refractory', '≈250 ms'],
+    ['Tetanus', 'impossible']
+  ];
+}
+
+/* ==========================================================================
+   Specimen 03 — SMOOTH
+   ========================================================================== */
+const SMOO  = [206, 158, 138];
+const SNUC  = [132, 104, 216];
+const GAPJ  = [246, 206, 128];
+
+const smoothRows = [
+  { y:  1.42, z:  0.34, off:  0.0 },
+  { y:  0.48, z:  0.34, off:  1.28 },
+  { y: -0.48, z:  0.34, off: -0.55 },
+  { y: -1.42, z:  0.34, off:  0.95 }
+];
+const smoothBack = [
+  { y:  0.95, z: -0.72, off: 0.6 },
+  { y: -0.05, z: -0.72, off: -0.8 },
+  { y: -0.98, z: -0.72, off: 1.5 }
+];
+
+function spindle(cx, y, z, len, R, wave, front) {
+  const c = wave;
+  const sh = 1 - 0.30 * c;
+  const Ln = len * sh;
+  const Rn = R / Math.sqrt(sh);
+  const path = t => [cx + (t - 0.5) * Ln, y + 0.05 * Math.sin(t * 2.4 + cx), z];
+  const radius = t => Rn * Math.pow(Math.sin(Math.PI * clamp(t, 0.001, 0.999)), 0.52);
+
+  const dim = front ? 1 : 0.64;
+  tube({
+    path, radius, segs: front ? 11 : 7, radial: front ? 9 : 7,
+    color: t => {
+      const k = (0.88 + 0.22 * Math.sin(Math.PI * t) + 0.10 * c) * dim;
+      return [SMOO[0] * k, SMOO[1] * k, SMOO[2] * k];
+    },
+    gloss: front ? 0.20 : 0.08, rim: front ? 0.40 : 0.22, amb: front ? 0.30 : 0.24
+  });
+
+  /* central nucleus — drawn into a corkscrew as the cell shortens */
+  const amp = 0.070 * c;
+  const npath = t => [
+    cx + (t - 0.5) * Ln * 0.40,
+    y + amp * Math.sin(t * TAU * 1.6),
+    z + amp * Math.cos(t * TAU * 1.6)
+  ];
+  if (front) {
+    tube({
+      path: npath, radius: t => 0.060 * Math.pow(Math.sin(Math.PI * clamp(t, 0.02, 0.98)), 0.32),
+      segs: 9, radial: 7, color: SNUC,
+      gloss: 0.35, rim: 0.3, amb: 0.48, glow: 0.06, alpha: 0.58, over: true
+    });
+  } else {
+    ellipsoid([cx, y, z], 0.20 * sh, 0.055, 0.055,
+      [SNUC[0] * 0.6, SNUC[1] * 0.6, SNUC[2] * 0.6], { amb: 0.35, gloss: 0.2, rim: 0.2 }, 6, 4);
+  }
+  return { half: Ln / 2, cx, y, z };
+}
+
+function sceneSmooth(T, S) {
+  const len = 2.55, R = 0.20;
+  const waveAt = x => {
+    if (!S.anim) return S.contract;
+    const u = 0.5 + 0.5 * Math.sin(T * 1.35 - x * 0.78);
+    return Math.pow(u, 2.4);
+  };
+  const contacts = [];
+
+  smoothBack.forEach(row => {
+    for (let i = -1; i <= 1; i++) {
+      const cx = i * (len * 0.98) + row.off;
+      spindle(cx, row.y, row.z, len * 0.95, R * 0.92, waveAt(cx) * 0.85, false);
+    }
+  });
+
+  smoothRows.forEach(row => {
+    for (let i = -1; i <= 1; i++) {
+      const cx = i * (len * 0.99) + row.off;
+      const s = spindle(cx, row.y, row.z, len, R, waveAt(cx), true);
+      if (i < 1) contacts.push([cx + s.half * 0.94, row.y, row.z]);
+    }
+  });
+
+  /* gap junctions where neighbouring cells touch */
+  contacts.forEach(p => {
+    ellipsoid(p, 0.072, 0.072, 0.072, GAPJ, { glow: 0.28, gloss: 0.35, rim: 0.2, amb: 0.72 }, 7, 5);
+  });
+
+  if (S.labels) {
+    label([smoothRows[0].off, smoothRows[0].y + 0.26, smoothRows[0].z], 'Fusiform cell', 30, -74, 'fusiform');
+    label([smoothRows[1].off - len * 0.99, smoothRows[1].y, smoothRows[1].z + 0.12], 'Central nucleus', -152, -96, 'nucleus');
+    label([smoothRows[2].off - len * 0.99, smoothRows[2].y - 0.22, smoothRows[2].z],
+          'Tapered ends interdigitate', -60, 78, 'stagger');
+    label(contacts[1] || contacts[0] || [0, 0, 0], 'Gap junction', 76, -46, 'gapj');
+    label([smoothRows[3].off + len * 0.99, smoothRows[3].y - 0.24, smoothRows[3].z], 'No striations', 78, 56, 'nostriae');
+  }
+
+  const c = waveAt(0);
+  return [
+    ['Shortening', (c * 68).toFixed(0) + ' %'],
+    ['Regulator', 'calmodulin'],
+    ['State', c > 0.55 ? 'contracting' : 'latch / tone']
+  ];
+}
+
+/* ==========================================================================
+   Specimen 04 — SARCOMERE   (1 world unit = 1 µm)
+   ========================================================================== */
+const THICK = [156, 134, 236];
+const THIN  = [232, 128, 150];
+const ZDISC = [116, 96, 202];
+const MLINE = [242, 190, 118];
+const HEAD  = [184, 162, 250];
+const TITIN = [110, 198, 194];
+
+function sceneSarcomere(T, S) {
+  const c = S.anim ? 0.5 - 0.5 * Math.cos(T * 0.9) : S.contract;
+  const thickHalf = 0.85, thinLen = 1.00;
+  const zHalf = 1.28 - 0.42 * c;
+  const tipL = -zHalf + thinLen, tipR = zHalf - thinLen;
+
+  /* Z discs */
+  [-1, 1].forEach(sgn => {
+    const x = sgn * zHalf;
+    tube({
+      path: t => [x - 0.035 + t * 0.07, 0, 0], radius: () => 0.50,
+      segs: 1, radial: 20, color: ZDISC, gloss: 0.35, rim: 0.5, amb: 0.35,
+      capEnd: true, capColor: [ZDISC[0] * 0.75, ZDISC[1] * 0.75, ZDISC[2] * 0.75]
+    });
+    tube({
+      path: t => [x + 0.035 - t * 0.07, 0, 0], radius: () => 0.50,
+      segs: 1, radial: 20, color: ZDISC, gloss: 0.35, rim: 0.5, amb: 0.35,
+      capEnd: true, capColor: [ZDISC[0] * 0.75, ZDISC[1] * 0.75, ZDISC[2] * 0.75]
+    });
+  });
+
+  /* six thin filaments per half-sarcomere, hexagonally placed */
+  const rThin = 0.30;
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * TAU + 0.26;
+    const y = Math.sin(a) * rThin, z = Math.cos(a) * rThin;
+    [[-zHalf, tipL], [zHalf, tipR]].forEach(seg => {
+      const x0 = seg[0], x1 = seg[1];
+      /* a gentle twist plus helical banding reads as the actin double helix
+         without paying for two wound strands per filament */
+      tube({
+        path: t => [x0 + (x1 - x0) * t, y, z], radius: () => 0.055,
+        segs: 14, radial: 9, oval: 0.13, twist: (x1 > x0 ? 1 : -1) * 3.4,
+        color: t => {
+          const k = 0.82 + 0.34 * Math.pow(Math.sin(t * Math.PI * 5.5), 2);
+          return [THIN[0] * k, THIN[1] * k, THIN[2] * k];
+        },
+        gloss: 0.5, rim: 0.55, amb: 0.3
+      });
+    });
+  }
+
+  /* the thick filament */
+  tube({
+    path: t => [-thickHalf + t * 2 * thickHalf, 0, 0],
+    radius: t => 0.085 * (1 + 0.20 * Math.exp(-Math.pow((t - 0.5) * 7, 2))),
+    segs: 10, radial: 10, color: THICK, gloss: 0.55, rim: 0.6, amb: 0.3
+  });
+
+  /* myosin heads, absent from the bare zone at the centre */
+  const headX = [0.22, 0.38, 0.54, 0.70];
+  headX.forEach((hx, i) => {
+    [-1, 1].forEach(sg => {
+      for (let k = 0; k < 2; k++) {
+        const a = i * 1.25 + k * Math.PI + (sg < 0 ? 0.6 : 0);
+        const tilt = 0.30 + 0.45 * c;
+        const bx = sg * hx;
+        const ax = bx + sg * tilt * 0.16;
+        const rr = 0.085, ro = 0.185;
+        const base = [bx, Math.sin(a) * rr, Math.cos(a) * rr];
+        const tip  = [ax, Math.sin(a) * ro, Math.cos(a) * ro];
+        line3D([base, tip], 'rgba(196,176,255,0.75)', 1.6);
+        ellipsoid(tip, 0.055, 0.048, 0.048, HEAD, { gloss: 0.6, rim: 0.45, amb: 0.38, glow: 0.10 }, 6, 4);
+      }
+    });
+  });
+
+  /* M line collar */
+  tube({
+    path: t => [-0.032 + t * 0.064, 0, 0], radius: () => 0.135,
+    segs: 1, radial: 14, color: MLINE, gloss: 0.6, rim: 0.4, amb: 0.45, glow: 0.15
+  });
+
+  /* titin, spanning Z disc to thick filament */
+  [-1, 1].forEach(sg => {
+    for (let k = 0; k < 2; k++) {
+      const a = k * Math.PI + 1.05;
+      const pts = [];
+      const x0 = sg * zHalf, x1 = sg * thickHalf;
+      const n = 9;
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        const x = x0 + (x1 - x0) * t;
+        const wob = Math.sin(t * Math.PI * 4.5) * 0.055 * (1 - c * 0.55) * Math.sin(t * Math.PI);
+        pts.push([x, Math.sin(a) * (0.185 + wob), Math.cos(a) * (0.185 + wob)]);
+      }
+      line3D(pts, 'rgba(122,226,220,0.95)', 2.4);
+    }
+  });
+
+  /* band brackets, sitting below the filament lattice */
+  const by = -0.72;
+  const bracket = (x0, x1, y, col) => {
+    line3D([[x0, y, 0], [x1, y, 0]], col, 1.6);
+    line3D([[x0, y - 0.06, 0], [x0, y + 0.06, 0]], col, 1.6);
+    line3D([[x1, y - 0.06, 0], [x1, y + 0.06, 0]], col, 1.6);
+  };
+  bracket(-zHalf, zHalf, by - 0.26, 'rgba(224,214,240,0.55)');
+  bracket(-thickHalf, thickHalf, by, 'rgba(156,134,236,0.9)');
+  if (zHalf - thickHalf > 0.03) bracket(-zHalf, -thickHalf, by, 'rgba(232,128,150,0.9)');
+  if (tipR > 0.03) bracket(tipL, tipR, by + 0.20, 'rgba(242,190,118,0.9)');
+
+  if (S.labels) {
+    label([-zHalf, 0.50, 0], 'Z disc', -96, -58, 'z');
+    label([(-zHalf - thickHalf) / 2, by, 0], 'I band', -112, 44, 'i');
+    label([0, by - 0.26, 0], 'Sarcomere', -24, 100, 'sarc');
+    label([thickHalf * 0.66, by, 0], 'A band', 76, 70, 'a');
+    label([0, by + 0.20, 0], 'H zone', 178, -48, 'h');
+    label([0, 0.15, 0], 'M line', -34, -104, 'm');
+    label([0.54, 0.20, 0], 'Myosin head', 104, -62, 'head');
+    label([-0.72, -0.28, 0.16], 'Thin filament · actin', -178, 34, 'thin');
+    label([0.16, -0.10, 0], 'Thick filament · myosin', 178, 48, 'thick');
+    label([-zHalf * 0.9, 0.16, 0], 'Titin', -112, -6, 'titin');
+  }
+
+  return [
+    ['Sarcomere', (2 * zHalf).toFixed(2) + ' µm'],
+    ['A band', (2 * thickHalf).toFixed(2) + ' µm — fixed'],
+    ['I band', (2 * Math.max(0, zHalf - thickHalf)).toFixed(2) + ' µm'],
+    ['H zone', (2 * Math.max(0, tipR)).toFixed(2) + ' µm']
+  ];
+}
+
+/* ==========================================================================
+   Scene registry
+   ========================================================================== */
+const SCENES = {
+  skeletal: {
+    name: 'Skeletal muscle', sub: 'Longitudinal · cut away', hue: 'var(--c-skeletal)',
+    tag: 'Specimen 01 · voluntary', title: 'Skeletal muscle',
+    lede: 'A cable inside a cable inside a cable. Fibres bundle into fascicles, fascicles into the muscle belly, and each layer carries its own collagen sheath out into the tendon.',
+    cam: { yaw: 0.42, pitch: 0.24, dist: 8.6 },
+    build: sceneSkeletal,
+    controls: [
+      { t: 'toggle', id: 'anim', label: 'Twitch', on: true },
+      { t: 'toggle', id: 'labels', label: 'Labels', on: true },
+      { t: 'slider', id: 'contract', label: 'Contract', hideWhenAnim: true },
+      { t: 'button', id: 'reset', label: 'Reset view' }
+    ],
+    features: [
+      { k: 'fibre', term: 'Muscle fibre', d: 'Long, cylindrical, unbranched; 10–100 µm wide and up to 30 cm long. A multinucleate syncytium built by myoblast fusion.' },
+      { k: 'nuclei', term: 'Peripheral nuclei', d: 'Hundreds of them, flattened just under the sarcolemma. The fastest way to tell skeletal muscle from the other two.' },
+      { k: 'bands', term: 'A and I bands', d: 'Myofibrils lie in register, so the dark A bands and light I bands read straight across the whole fibre. Z disc to Z disc is one sarcomere, ~2.0–2.5 µm.' },
+      { k: 'endomysium', term: 'Endomysium', d: 'Delicate reticular fibres around each individual fibre, carrying capillaries and the nerve terminal.' },
+      { k: 'perimysium', term: 'Perimysium', d: 'Wraps fibres into fascicles and carries the larger vessels and nerves.' },
+      { k: 'fascicle', term: 'Fascicle', d: 'A bundle of fibres — the unit you can see with the naked eye as the grain of meat.' },
+      { k: 'epimysium', term: 'Epimysium', d: 'Dense irregular sheath around the whole muscle, continuous with the tendon.' }
+    ]
+  },
+  cardiac: {
+    name: 'Cardiac muscle', sub: 'Myocardium · beating', hue: 'var(--c-cardiac)',
+    tag: 'Specimen 02 · autorhythmic', title: 'Cardiac muscle',
+    lede: 'Short branched cells wired end to end. The intercalated disc does two jobs at once — it glues the cells mechanically and couples them electrically, so the myocardium contracts as one.',
+    cam: { yaw: 0.36, pitch: 0.26, dist: 9.8 },
+    build: sceneCardiac,
+    controls: [
+      { t: 'toggle', id: 'anim', label: 'Beat', on: true },
+      { t: 'toggle', id: 'labels', label: 'Labels', on: true },
+      { t: 'slider', id: 'rate', label: 'Rate', min: 40, max: 190, val: 100, hideWhenAnim: false, live: true },
+      { t: 'button', id: 'reset', label: 'Reset view' }
+    ],
+    features: [
+      { k: 'branch', term: 'Branched cell', d: 'Short cylinders, ~15 × 100 µm, branching and anastomosing into a three-dimensional network.' },
+      { k: 'nucleus', term: 'Central nucleus', d: 'One — occasionally two — sitting in a clear perinuclear zone of glycogen, Golgi and lipofuscin.' },
+      { k: 'disc', term: 'Intercalated disc', d: 'Fascia adherens anchors the terminal thin filaments, desmosomes stop the cells pulling apart, gap junctions carry the current.' },
+      { k: 'gap', term: 'Functional syncytium', d: 'Gap junctions couple the cells electrically so the myocardium behaves as one unit — coupled, but not a true anatomical syncytium.' },
+      { k: 'striation', term: 'Fine striations', d: 'Same sarcomeres as skeletal muscle, but less regimented. T-tubules sit at the Z line and pair with a single SR sac — a dyad.' }
+    ]
+  },
+  smooth: {
+    name: 'Smooth muscle', sub: 'Visceral layer · peristaltic wave', hue: 'var(--c-smooth)',
+    tag: 'Specimen 03 · involuntary', title: 'Smooth muscle',
+    lede: 'Spindles packed head to tail. With no sarcomeres to constrain it, the cell can shorten by 70% of its length — and hold that shortening for hours at almost no metabolic cost.',
+    cam: { yaw: 0.28, pitch: 0.32, dist: 8.8 },
+    build: sceneSmooth,
+    controls: [
+      { t: 'toggle', id: 'anim', label: 'Peristalsis', on: true },
+      { t: 'toggle', id: 'labels', label: 'Labels', on: true },
+      { t: 'slider', id: 'contract', label: 'Contract', hideWhenAnim: true },
+      { t: 'button', id: 'reset', label: 'Reset view' }
+    ],
+    features: [
+      { k: 'fusiform', term: 'Fusiform cell', d: 'Spindle-shaped, tapering to a point at both ends. 20 µm in a small vessel; up to 500 µm in the pregnant uterus.' },
+      { k: 'nucleus', term: 'Central nucleus', d: 'Single and elongated. Watch it twist into the classic corkscrew shape as the wave passes — the cell shortens obliquely, not linearly.' },
+      { k: 'stagger', term: 'Staggered packing', d: 'The broad belly of one cell lies against the tapered ends of its neighbours, so a thin sheet generates force across its whole area.' },
+      { k: 'gapj', term: 'Gap junction', d: 'Single-unit smooth muscle is coupled cell to cell, so a pacemaker slow wave from the interstitial cells of Cajal spreads as peristalsis.' },
+      { k: 'nostriae', term: 'No striations', d: 'No sarcomeres, no Z discs, no troponin. Force runs through dense bodies and dense plaques, and Ca²⁺ works through calmodulin and MLCK.' }
+    ]
+  },
+  sarcomere: {
+    name: 'Sarcomere', sub: 'Sliding filament · 1 unit = 1 micron', hue: 'var(--c-molecular)',
+    tag: 'Specimen 04 · molecular', title: 'The sarcomere',
+    lede: 'The engine shared by skeletal and cardiac muscle. Drag the contraction slider and watch what changes — and, more tellingly, what does not.',
+    cam: { yaw: 0.30, pitch: 0.20, dist: 4.3 },
+    build: sceneSarcomere,
+    controls: [
+      { t: 'slider', id: 'contract', label: 'Contract', wide: true },
+      { t: 'toggle', id: 'anim', label: 'Cycle', on: false },
+      { t: 'toggle', id: 'labels', label: 'Labels', on: true },
+      { t: 'button', id: 'reset', label: 'Reset view' }
+    ],
+    features: [
+      { k: 'a', term: 'A band — never changes', d: 'The full length of the thick filaments. It is constant through the entire cycle, because the filaments themselves never shorten. Dark and anisotropic.' },
+      { k: 'i', term: 'I band — narrows', d: 'Thin filaments only, bisected by the Z disc. It shrinks almost to nothing at full contraction. Light and isotropic.' },
+      { k: 'h', term: 'H zone — closes', d: 'The part of the A band holding thick filaments alone. As the thin filaments slide in, it disappears.' },
+      { k: 'z', term: 'Z disc', d: 'α-actinin lattice anchoring the thin filaments. Z to Z is one sarcomere: 2.56 µm relaxed, about 1.7 µm fully contracted.' },
+      { k: 'm', term: 'M line', d: 'Myomesin and creatine kinase cross-linking the thick filaments and holding the hexagonal lattice in register.' },
+      { k: 'thick', term: 'Thick filament — myosin II', d: 'Two heavy chains folded into head, hinge and tail, plus four light chains. The bare zone at the centre has no heads, so the pull is symmetrical.' },
+      { k: 'thin', term: 'Thin filament — actin', d: 'An F-actin double helix carrying tropomyosin and the troponin complex: TnT binds tropomyosin, TnI inhibits, TnC binds Ca²⁺.' },
+      { k: 'head', term: 'Myosin head', d: 'The ATPase. Ca²⁺ moves troponin and tropomyosin off the binding site; the head attaches, pivots, and the filaments slide past one another.' },
+      { k: 'titin', term: 'Titin', d: 'The molecular spring running Z disc to M line. It centres the thick filament and provides passive elastic recoil.' },
+      { k: 'sarc', term: 'Sarcomere', d: 'Z disc to Z disc — the functional contractile unit. Shortening is entirely sliding: no filament ever changes length.' }
+    ]
+  }
+};
+
+/* ==========================================================================
+   State + UI
+   ========================================================================== */
+const state = {};
+Object.keys(SCENES).forEach(k => {
+  const sc = SCENES[k];
+  state[k] = {
+    anim: !reduced && (sc.controls.find(c => c.id === 'anim') || {}).on === true,
+    labels: true, contract: 0, rate: 1, sel: null
+  };
+});
+let cur = 'skeletal';
+let dirty = true;
+
+const elName = document.getElementById('hudName');
+const elMag = document.getElementById('hudMag');
+const elMetrics = document.getElementById('hudMetrics');
+const elControls = document.getElementById('controls');
+const elReadout = document.getElementById('readout');
+const elTag = document.getElementById('roTag');
+const elTitle = document.getElementById('roTitle');
+const elLede = document.getElementById('roLede');
+const elFeatures = document.getElementById('roFeatures');
+
+function buildControls() {
+  const sc = SCENES[cur], S = state[cur];
+  elControls.replaceChildren();
+  sc.controls.forEach(c => {
+    if (c.t === 'slider' && c.hideWhenAnim && S.anim) return;
+    if (c.t === 'toggle') {
+      const b = document.createElement('button');
+      b.className = 'ctl'; b.type = 'button'; b.textContent = c.label;
+      b.setAttribute('aria-pressed', String(!!S[c.id]));
+      b.addEventListener('click', () => {
+        S[c.id] = !S[c.id];
+        buildControls(); dirty = true;
+      });
+      elControls.appendChild(b);
+    } else if (c.t === 'button') {
+      const b = document.createElement('button');
+      b.className = 'ctl'; b.type = 'button'; b.textContent = c.label;
+      b.addEventListener('click', () => { resetCam(); });
+      elControls.appendChild(b);
+    } else if (c.t === 'slider') {
+      const wrap = document.createElement('div');
+      wrap.className = 'slider-ctl';
+      const lab = document.createElement('label');
+      const id = 'sl-' + c.id;
+      lab.htmlFor = id; lab.textContent = c.label;
+      const inp = document.createElement('input');
+      inp.type = 'range'; inp.id = id;
+      inp.min = c.min === undefined ? 0 : c.min;
+      inp.max = c.max === undefined ? 100 : c.max;
+      inp.value = c.id === 'rate' ? S.rate * 100 : S.contract * 100;
+      if (c.wide) inp.style.width = '11rem';
+      inp.addEventListener('input', () => {
+        if (c.id === 'rate') S.rate = +inp.value / 100;
+        else S.contract = +inp.value / 100;
+        dirty = true;
+      });
+      wrap.append(lab, inp);
+      elControls.appendChild(wrap);
+    }
+  });
+  const sp = document.createElement('span');
+  sp.className = 'ctl-spacer';
+  elControls.appendChild(sp);
+}
+
+function buildReadout() {
+  const sc = SCENES[cur], S = state[cur];
+  elReadout.style.setProperty('--scene-hue', sc.hue);
+  elTag.textContent = sc.tag;
+  elTitle.textContent = sc.title;
+  elLede.textContent = sc.lede;
+  elFeatures.replaceChildren();
+  sc.features.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'feat'; row.dataset.key = f.k;
+    const dt = document.createElement('dt'); dt.textContent = f.term;
+    const dd = document.createElement('dd'); dd.textContent = f.d;
+    row.append(dt, dd);
+    row.addEventListener('mouseenter', () => { S.sel = f.k; syncSel(); dirty = true; });
+    row.addEventListener('mouseleave', () => { S.sel = null; syncSel(); dirty = true; });
+    elFeatures.appendChild(row);
+  });
+}
+
+function syncSel() {
+  const S = state[cur];
+  elFeatures.querySelectorAll('.feat').forEach(el => {
+    el.classList.toggle('lit', el.dataset.key === S.sel);
+  });
+}
+
+function resetCam() {
+  const c = SCENES[cur].cam;
+  cam.yaw = c.yaw; cam.pitch = c.pitch; cam.dist = c.dist;
+  dirty = true;
+}
+
+function selectScene(key) {
+  cur = key;
+  document.querySelectorAll('.slide').forEach(b => {
+    b.setAttribute('aria-selected', String(b.dataset.scene === key));
+  });
+  elName.textContent = SCENES[key].name;
+  elMag.textContent = SCENES[key].sub;
+  resetCam();
+  buildControls();
+  buildReadout();
+  dirty = true;
+}
+
+document.querySelectorAll('.slide').forEach(b => {
+  b.addEventListener('click', () => selectScene(b.dataset.scene));
+});
+
+/* ---------- pointer ---------- */
+let dragging = false, moved = 0, lastX = 0, lastY = 0;
+const pointers = new Map();
+let pinchStart = 0, pinchDist0 = 0;
+
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 1) { dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY; }
+  else if (pointers.size === 2) {
+    const p = [...pointers.values()];
+    pinchDist0 = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
+    pinchStart = cam.dist;
+  }
+  field.classList.add('touched');
+});
+canvas.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 2) {
+    const p = [...pointers.values()];
+    const d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
+    if (pinchDist0 > 4) { cam.dist = clamp(pinchStart * pinchDist0 / d, 3.2, 30); dirty = true; }
+    return;
+  }
+  if (!dragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  moved += Math.abs(dx) + Math.abs(dy);
+  cam.yaw += dx * 0.0072;
+  cam.pitch = clamp(cam.pitch + dy * 0.0062, -1.35, 1.35);
+  dirty = true;
+});
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size === 0) dragging = false;
+}
+canvas.addEventListener('pointerup', e => {
+  if (moved < 5 && pointers.size === 1) hitLabels(e);
+  endPointer(e);
+});
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('lostpointercapture', endPointer);
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.09), 3.2, 30);
+  field.classList.add('touched');
+  dirty = true;
+}, { passive: false });
+
+canvas.addEventListener('keydown', e => {
+  const k = e.key;
+  if (k === 'ArrowLeft') cam.yaw -= 0.09;
+  else if (k === 'ArrowRight') cam.yaw += 0.09;
+  else if (k === 'ArrowUp') cam.pitch = clamp(cam.pitch - 0.07, -1.35, 1.35);
+  else if (k === 'ArrowDown') cam.pitch = clamp(cam.pitch + 0.07, -1.35, 1.35);
+  else if (k === '+' || k === '=') cam.dist = clamp(cam.dist * 0.9, 3.2, 30);
+  else if (k === '-') cam.dist = clamp(cam.dist * 1.1, 3.2, 30);
+  else return;
+  e.preventDefault();
+  field.classList.add('touched');
+  dirty = true;
+});
+
+function hitLabels(e) {
+  const r = canvas.getBoundingClientRect();
+  const x = (e.clientX - r.left), y = (e.clientY - r.top);
+  const S = state[cur];
+  for (const lr of labelRects) {
+    if (x >= lr.x && x <= lr.x + lr.w && y >= lr.y && y <= lr.y + lr.h) {
+      S.sel = (S.sel === lr.key) ? null : lr.key;
+      syncSel();
+      const row = elFeatures.querySelector('[data-key="' + lr.key + '"]');
+      if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      dirty = true;
+      return;
+    }
+  }
+  S.sel = null; syncSel(); dirty = true;
+}
+
+/* ---------- sizing ---------- */
+function resize() {
+  const r = field.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(320, Math.round(r.width));
+  H = Math.max(260, Math.round(r.height));
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  dirty = true;
+}
+new ResizeObserver(resize).observe(field);
+
+/* ---------- background: the illuminated field ---------- */
+function drawField() {
+  const g = ctx.createRadialGradient(W * 0.46, H * 0.44, 10, W * 0.5, H * 0.5, Math.max(W, H) * 0.78);
+  g.addColorStop(0, '#1A1226');
+  g.addColorStop(0.55, '#0E0916');
+  g.addColorStop(1, '#050308');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  /* a hint of out-of-focus tissue behind the specimen */
+  const blobs = [[0.22, 0.30, 0.34, 'rgba(122,54,80,0.13)'],
+                 [0.78, 0.66, 0.40, 'rgba(70,48,120,0.12)'],
+                 [0.55, 0.16, 0.26, 'rgba(150,80,90,0.07)']];
+  blobs.forEach(b => {
+    const rg = ctx.createRadialGradient(W * b[0], H * b[1], 0, W * b[0], H * b[1], Math.max(W, H) * b[2]);
+    rg.addColorStop(0, b[3]); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, W, H);
+  });
+}
+
+/* ---------- label pass ---------- */
+function drawLabels(hue) {
+  const S = state[cur];
+  labelRects = [];
+  ctx.save();
+  ctx.font = '500 11px ui-monospace, "SF Mono", "DejaVu Sans Mono", Menlo, monospace';
+  ctx.textBaseline = 'middle';
+  labels.forEach(l => {
+    viewPt(l.pos, _v[0]);
+    const d = cam.dist - _v[0][2];
+    if (d < 0.4) return;
+    const ax = projX(_v[0][0], d), ay = projY(_v[0][1], d);
+    let tx = ax + l.dx, ty = ay + l.dy;
+    const wTxt = ctx.measureText(l.text).width;
+    const right = l.dx >= 0;
+    const bx = right ? tx : tx - wTxt;
+    tx = clamp(bx, 8, W - wTxt - 8);
+    ty = clamp(ty, 16, H - 46);
+
+    const lit = S.sel === l.key;
+    const alpha = lit ? 1 : 0.72;
+
+    ctx.strokeStyle = lit ? hue : 'rgba(210,196,222,0.42)';
+    ctx.lineWidth = lit ? 1.4 : 1;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    const elbowX = right ? tx - 7 : tx + wTxt + 7;
+    ctx.lineTo(elbowX, ty);
+    ctx.lineTo(right ? tx - 3 : tx + wTxt + 3, ty);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(ax, ay, lit ? 3.2 : 2.2, 0, TAU);
+    ctx.fillStyle = lit ? hue : 'rgba(226,214,236,0.8)';
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(8,5,13,0.66)';
+    ctx.fillRect(tx - 4, ty - 8, wTxt + 8, 16);
+    ctx.fillStyle = lit ? '#fff' : 'rgba(232,222,242,' + alpha + ')';
+    ctx.fillText(l.text, tx, ty + 0.5);
+
+    labelRects.push({ x: tx - 6, y: ty - 10, w: wTxt + 12, h: 20, key: l.key });
+  });
+  ctx.restore();
+}
+
+const HUE_HEX = { skeletal: '#E2687C', cardiac: '#DC6046', smooth: '#CFA48D', sarcomere: '#9A85E8' };
+
+/* ---------- frame ---------- */
+let t0 = performance.now();
+function frame(now) {
+  const S = state[cur];
+  const animating = S.anim;
+  if (dirty || animating) {
+    dirty = false;
+    const T = (now - t0) / 1000;
+    camSync();
+    FOCAL = cam.fov * Math.min(W, H) * (W < 560 ? 0.66 : 0.86);
+
+    nPool = 0; active.length = 0; overlay.length = 0; labels.length = 0;
+
+    const metrics = SCENES[cur].build(T, S) || [];
+
+    active.sort((a, b) => b.d - a.d);
+    overlay.sort((a, b) => b.d - a.d);
+
+    drawField();
+    ctx.lineJoin = 'round';
+    const paint = list => {
+      for (let i = 0; i < list.length; i++) {
+        const f = list[i];
+        ctx.beginPath();
+        ctx.moveTo(f.p[0], f.p[1]);
+        for (let j = 1; j < f.n; j++) ctx.lineTo(f.p[j * 2], f.p[j * 2 + 1]);
+        if (f.fill) {
+          ctx.closePath();
+          ctx.fillStyle = f.fill;
+          ctx.fill();
+        }
+        if (f.line) {
+          ctx.strokeStyle = f.line;
+          ctx.lineWidth = f.lw;
+          ctx.stroke();
+        }
+      }
+    };
+    paint(active);
+    paint(overlay);
+
+    /* vignette — the edge of the field of view */
+    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.max(W, H) * 0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+
+    if (S.labels) drawLabels(HUE_HEX[cur]);
+
+    elMetrics.replaceChildren();
+    metrics.forEach(m => {
+      const d = document.createElement('div');
+      d.innerHTML = '';
+      d.append(m[0] + ' ');
+      const b = document.createElement('b');
+      b.textContent = m[1];
+      d.appendChild(b);
+      elMetrics.appendChild(d);
+    });
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- go ---------- */
+resize();
+selectScene('skeletal');
+requestAnimationFrame(frame);
+
+})();
+</script>
