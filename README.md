@@ -20,16 +20,43 @@ its explanation. Arrow keys rotate when the canvas has focus.
 | 03 Smooth | Staggered spindles under a peristaltic wave, shortening up to 68%, with the nucleus twisting into its corkscrew. |
 | 04 Sarcomere | Sliding filaments at 1 unit = 1 µm. Contracting from 0 to 100% takes the sarcomere 2.56 → 1.72 µm and the I band 0.86 → 0.02 µm while the A band holds at 1.70 µm. |
 
-Below the viewer: three full atlas plates (cell structure, filaments, membrane
+## The body atlas
+
+A second interactive below the specimens: a rotatable figure you click to open
+the muscles of that part in 3D.
+
+Ten regions — head and neck, chest, shoulder and arm, forearm and hand, back,
+abdominal wall, hip and thigh, leg and foot, plus the heart and the gut wall.
+Each opens its own diagram with the bones in place, the muscles named, and what
+each one actually does. Switch on **Viscera** and the body wall turns to glass,
+putting the heart and the gut coil in reach.
+
+The two visceral regions are the point of the section: the heart is branched
+striated cardiac muscle wound as a helical band, the gut wall is two smooth
+muscle coats at right angles, and each region links straight back to its tissue
+specimen at the top of the page.
+
+Regions are also listed as buttons beside the figure, so nothing depends on
+hitting a narrow limb with a mouse.
+
+Below both viewers: three full atlas plates (cell structure, filaments, membrane
 systems, connective tissue, control, fibre types), a seventeen-row comparison
 table, and clinical correlations tied back to the histology.
 
 ## How the rendering works
 
-A small painter's-algorithm renderer on canvas 2D — no WebGL, no three.js.
+A small painter's-algorithm renderer on canvas 2D — no WebGL, no three.js. One
+engine drives all three canvases (specimen, figure, region diagram), aliased
+onto whichever view is being built.
 
 - Parametric mesh builders for tubes (arbitrary path, radius, angular sweep,
-  twist and ovality) and ellipsoids.
+  twist and ovality) and ellipsoids. On top of those sit two anatomy
+  primitives: a bone (shaft with epiphyseal flares) and a muscle belly
+  (fusiform fascicle, pale tendon at each end). Broad muscles are drawn as a
+  fan of fascicle strips, which is what they are.
+- Clicking the figure hit-tests the real geometry: every face carries a region
+  id, and a click runs point-in-polygon over the last frame's faces from
+  nearest to farthest. No invisible hotspot map to keep in sync with the model.
 - Per-face flat shading: Lambert key light in view space, so the illumination
   tracks the camera the way a microscope lamp does, plus a cool rim term and a
   specular highlight for wet tissue.

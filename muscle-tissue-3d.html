@@ -427,6 +427,118 @@ body { margin: 0; }   /* restates the host reset so the file also opens standalo
 .feat.lit { background: color-mix(in srgb, var(--scene-hue, var(--accent)) 13%, transparent); }
 
 /* ============================================================
+   BODY ATLAS — figure picker · region diagram · region readout
+   ============================================================ */
+.atlas-intro { padding-block: clamp(3.5rem, 8vw, 6rem) 1.6rem; display: grid; gap: .6rem; max-width: var(--measure); }
+.atlas-intro h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); }
+.atlas-intro p { color: var(--fg-2); font-size: .95rem; }
+
+.bodyscope {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 62rem) {
+  .bodyscope { grid-template-columns: 15.5rem minmax(0, 1fr) 20.5rem; }
+}
+
+.figure-col {
+  background: var(--bg-panel);
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: .7rem;
+  padding: .8rem .8rem 1rem;
+  align-content: start;
+}
+.body-field {
+  position: relative;
+  background: var(--stage);
+  border-radius: 3px;
+  overflow: hidden;
+  aspect-ratio: 3 / 5;
+  min-height: 17rem;
+  touch-action: none;
+}
+#bodyStage { display: block; width: 100%; height: 100%; cursor: grab; }
+#bodyStage:active { cursor: grabbing; }
+#bodyStage:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.body-field .caption {
+  position: absolute; left: .6rem; bottom: .5rem;
+  font-family: var(--ff-mono); font-size: .55rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--stage-fg-3); pointer-events: none;
+  transition: opacity .5s ease;
+}
+.body-field.touched .caption { opacity: 0; }
+
+#bodyControls { display: flex; flex-wrap: wrap; gap: .35rem; }
+#bodyControls .ctl {
+  color: var(--fg-2);
+  background: transparent;
+  border-color: var(--rule-firm);
+}
+#bodyControls .ctl:hover { background: var(--bg-sunk); color: var(--fg); }
+#bodyControls .ctl[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  color: var(--fg);
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: .3rem; align-content: start; }
+.chip {
+  font: inherit;
+  font-size: .72rem;
+  padding: .26rem .5rem;
+  border-radius: 2px;
+  border: 1px solid var(--rule-firm);
+  background: transparent;
+  color: var(--fg-2);
+  cursor: pointer;
+  border-left: 2px solid var(--chip-hue, var(--accent));
+  transition: background .16s ease, color .16s ease;
+}
+.chip:hover { background: var(--bg-sunk); color: var(--fg); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--chip-hue, var(--accent)) 18%, transparent);
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.region-field {
+  position: relative;
+  background: var(--stage);
+  min-height: 24rem;
+  aspect-ratio: 16 / 11;
+  touch-action: none;
+}
+@media (min-width: 62rem) { .region-field { aspect-ratio: auto; min-height: 32rem; } }
+#regionStage { display: block; width: 100%; height: 100%; cursor: grab; }
+#regionStage:active { cursor: grabbing; }
+#regionStage:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.tissue-link {
+  font-family: var(--ff-mono);
+  font-size: .62rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--rule-firm);
+  border-radius: 2px;
+  color: var(--scene-hue, var(--accent));
+  padding: .45rem .6rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background .16s ease;
+}
+.tissue-link:hover { background: color-mix(in srgb, var(--scene-hue, var(--accent)) 14%, transparent); }
+.tissue-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ============================================================
    SHARED PROPERTIES BAND
    ============================================================ */
 .props {
@@ -663,6 +775,47 @@ tbody td b { color: var(--fg); font-weight: 600; }
         <h2 id="roTitle"></h2>
         <p class="lede" id="roLede"></p>
         <dl class="features" id="roFeatures"></dl>
+      </aside>
+
+    </section>
+  </div>
+
+
+  <div class="shell">
+    <section class="atlas-intro">
+      <p class="eyebrow">The body</p>
+      <h2>Click a part, open its muscles</h2>
+      <p>Turn the figure and pick a region — on the model itself or from the list beneath it. Switch on <strong>Viscera</strong> to reach the heart and the gut wall, the two places where the muscle is not skeletal at all.</p>
+    </section>
+
+    <section class="bodyscope" aria-label="Interactive body atlas">
+
+      <div class="figure-col">
+        <div class="body-field" id="bodyField">
+          <canvas id="bodyStage" tabindex="0" aria-label="Rotatable 3D figure. Click a body region to open its muscles. Arrow keys rotate."></canvas>
+          <p class="caption">Click a region</p>
+        </div>
+        <div id="bodyControls"></div>
+        <div class="chips" id="regionChips" role="group" aria-label="Body regions"></div>
+      </div>
+
+      <div class="region-field" id="regionField">
+        <canvas id="regionStage" tabindex="0" aria-label="Rotatable 3D diagram of the muscles of the selected region. Arrow keys rotate."></canvas>
+        <div class="hud hud-tl">
+          <span class="nm" id="regionName">Shoulder &amp; upper arm</span>
+          <span class="mag" id="regionSub">skeletal muscle</span>
+        </div>
+        <div class="hud-metrics" id="regionMetrics"></div>
+        <div class="controls" id="regionControls"></div>
+        <p class="hint">Drag to rotate · click a muscle</p>
+      </div>
+
+      <aside class="readout" id="regionReadout">
+        <p class="tag" id="regionTag"></p>
+        <h2 id="regionTitle"></h2>
+        <p class="lede" id="regionLede"></p>
+        <button type="button" class="tissue-link" id="regionLink"></button>
+        <dl class="features" id="regionFeatures"></dl>
       </aside>
 
     </section>
@@ -1000,16 +1153,18 @@ tbody td b { color: var(--fg); font-weight: 600; }
    is real deformation rather than a sprite swap.
    ========================================================================== */
 
-const canvas  = document.getElementById('stage');
-const ctx     = canvas.getContext('2d', { alpha: false });
-const field   = document.getElementById('field');
 const TAU     = Math.PI * 2;
 const clamp   = (v, a, b) => v < a ? a : (v > b ? b : v);
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---------- camera ---------- */
-const cam = { yaw: 0.42, pitch: 0.24, dist: 11, fov: 1.02 };
-let CY = 1, SY = 0, CP = 1, SP = 0, W = 800, H = 550, DPR = 1;
+/* ---------- camera ----------
+   The engine drives three canvases: the specimen stage, the body picker and
+   the region diagram. One set of module globals is aliased onto whichever
+   view is being built, since views are rendered one at a time. */
+let VIEW = null, canvas = null, ctx = null;
+let cam = { yaw: 0.42, pitch: 0.24, dist: 11, fov: 1.02 };
+let CY = 1, SY = 0, CP = 1, SP = 0, W = 800, H = 550;
+let pool = [], active = [], overlay = [];
 
 function camSync() {
   CY = Math.cos(cam.yaw); SY = Math.sin(cam.yaw);
@@ -1031,15 +1186,19 @@ function projX(vx, depth) { return W * 0.5 + vx * FOCAL / depth; }
 function projY(vy, depth) { return H * 0.5 - vy * FOCAL / depth; }
 
 /* ---------- face pool ---------- */
-const pool = [];
 let nPool = 0;
-const active = [];
-const overlay = [];   /* central nuclei — drawn last so they read through the cell */
 function takeFace() {
   let f = pool[nPool];
-  if (!f) { f = pool[nPool] = { p: new Float32Array(24), n: 0, d: 0, fill: '', line: null, lw: 1 }; }
+  if (!f) { f = pool[nPool] = { p: new Float32Array(24), n: 0, d: 0, fill: '', line: null, lw: 1, pick: null }; }
   nPool++;
   return f;
+}
+
+function activate(v) {
+  VIEW = v; canvas = v.canvas; ctx = v.ctx; cam = v.cam;
+  W = v.W; H = v.H;
+  pool = v.pool; active = v.active; overlay = v.overlay;
+  labels = v.labels; labelRects = v.labelRects;
 }
 
 /* ---------- lighting ---------- */
@@ -1083,9 +1242,11 @@ function emitView(m, base, o) {
 
   /* Nudge each vertex a third of a pixel away from the face centre. Adjacent
      quads then overlap instead of leaving an antialiased hairline gap — the
-     same result a same-colour stroke gives, at half the rasterisation cost. */
+     same result a same-colour stroke gives, at half the rasterisation cost.
+     Skipped on translucent surfaces, where the overlap would stack into a
+     visible mesh instead of disappearing. */
   sx /= m; sy /= m;
-  for (let i = 0; i < m; i++) {
+  if (o.alpha === undefined || o.alpha >= 0.9) for (let i = 0; i < m; i++) {
     const dx = f.p[i * 2] - sx, dy = f.p[i * 2 + 1] - sy;
     const L2 = Math.hypot(dx, dy);
     if (L2 > 0.001) {
@@ -1110,6 +1271,7 @@ function emitView(m, base, o) {
                    : 'rgba(' + r + ',' + g + ',' + b + ',' + al + ')';
   f.line = null;
   f.lw = 0.7;
+  f.pick = o.pick || null;
   (o.over ? overlay : active).push(f);
 }
 
@@ -1838,6 +2000,725 @@ const SCENES = {
 };
 
 /* ==========================================================================
+   Anatomy vocabulary
+   Everything in the body atlas is built from two shapes: a BONE (a shaft with
+   epiphyseal flares) and a MUSCLE BELLY (a fusiform fascicle running from pale
+   tendon, through the red belly, back to tendon). Broad muscles are drawn as a
+   fan of fascicle strips, which is what they actually are.
+   ========================================================================== */
+const BONE_C   = [230, 223, 206];
+const TENDON_C = [228, 220, 208];
+const M_SUP    = [216,  92, 100];   /* superficial */
+const M_MID    = [190,  72,  84];   /* deep to that */
+const M_LIGHT  = [232, 122, 122];   /* pale / strap muscles */
+const M_DEEP   = [162,  58,  72];   /* deepest layer */
+
+function ramp(t, pts) {
+  if (t <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    if (t <= pts[i][0]) {
+      const a = pts[i - 1], b = pts[i];
+      const u = (t - a[0]) / (b[0] - a[0]);
+      return a[1] + (b[1] - a[1]) * (u * u * (3 - 2 * u));
+    }
+  }
+  return pts[pts.length - 1][1];
+}
+
+function bez(a, b, bow) {
+  const cx = (a[0] + b[0]) / 2 + (bow ? bow[0] : 0);
+  const cy = (a[1] + b[1]) / 2 + (bow ? bow[1] : 0);
+  const cz = (a[2] + b[2]) / 2 + (bow ? bow[2] : 0);
+  return t => {
+    const u = 1 - t, w0 = u * u, w1 = 2 * u * t, w2 = t * t;
+    return [a[0] * w0 + cx * w1 + b[0] * w2,
+            a[1] * w0 + cy * w1 + b[1] * w2,
+            a[2] * w0 + cz * w1 + b[2] * w2];
+  };
+}
+const mir = p => [-p[0], p[1], p[2]];
+
+function bone(o) {
+  const r = o.r || 0.10;
+  tube({
+    path: o.path || bez(o.from, o.to, o.bow),
+    radius: t => r * (1 + 0.75 * Math.exp(-Math.pow(t * 5.5, 2))
+                        + 0.75 * Math.exp(-Math.pow((1 - t) * 5.5, 2))),
+    segs: o.segs || 14, radial: o.radial || 8, color: BONE_C,
+    gloss: 0.26, rim: 0.42, amb: 0.36, pick: o.pick || null, glow: o.glow || 0
+  });
+}
+
+function muscleBelly(o) {
+  const w = o.w || 0.13;
+  const tn = o.tendon || [0.14, 0.86];
+  const t0 = tn[0], t1 = tn[1];
+  const tw = w * (o.tw || 0.22);
+  const col = o.color || M_SUP;
+  const span = Math.max(1e-4, t1 - t0);
+  tube({
+    path: o.path || bez(o.from, o.to, o.bow),
+    radius: t => (t <= t0 || t >= t1)
+      ? tw
+      : tw + (w - tw) * Math.pow(Math.sin(Math.PI * (t - t0) / span), 0.60),
+    color: t => {
+      if (t <= t0 || t >= t1) return TENDON_C;
+      const k = 0.84 + 0.30 * Math.sin(Math.PI * (t - t0) / span);
+      return [col[0] * k, col[1] * k, col[2] * k];
+    },
+    segs: o.segs || 15, radial: o.radial || 9,
+    gloss: 0.30, rim: 0.48, amb: 0.26,
+    pick: o.pick || null, glow: o.glow || 0, alpha: o.alpha
+  });
+}
+
+/* A broad muscle: a fan of fascicle strips from a line of origins to an
+   insertion (or across a line of insertions). */
+function muscleFan(o) {
+  const n = o.origins.length;
+  o.origins.forEach((p, i) => {
+    const k = n > 1 ? i / (n - 1) : 0.5;
+    const ins = o.insert2
+      ? [o.insert[0] + (o.insert2[0] - o.insert[0]) * k,
+         o.insert[1] + (o.insert2[1] - o.insert[1]) * k,
+         o.insert[2] + (o.insert2[2] - o.insert[2]) * k]
+      : o.insert;
+    muscleBelly({
+      from: p, to: ins, bow: o.bow, color: o.color, pick: o.pick, glow: o.glow,
+      tendon: o.tendon, alpha: o.alpha, tw: o.tw,
+      w: o.w * (0.74 + 0.42 * Math.sin(Math.PI * (0.12 + 0.76 * k))),
+      segs: 12, radial: 7
+    });
+  });
+}
+
+function drawMuscle(m, lit) {
+  const o = {
+    from: m.from, to: m.to, bow: m.bow, w: m.w, tendon: m.tendon, tw: m.tw,
+    color: m.color || M_SUP, pick: m.k, glow: lit ? 0.26 : 0,
+    origins: m.origins, insert: m.insert, insert2: m.insert2, path: m.path
+  };
+  if (m.origins) muscleFan(o); else muscleBelly(o);
+  if (m.both) {
+    const mo = Object.assign({}, o);
+    if (m.origins) { mo.origins = m.origins.map(mir); mo.insert = mir(m.insert); if (m.insert2) mo.insert2 = mir(m.insert2); }
+    else { mo.from = mir(m.from); mo.to = mir(m.to); }
+    if (m.bow) mo.bow = [-m.bow[0], m.bow[1], m.bow[2]];
+    if (m.origins) muscleFan(mo); else muscleBelly(mo);
+  }
+}
+
+function muscleAnchor(m) {
+  if (m.at) return m.at;
+  if (m.origins) {
+    const i = (m.origins.length - 1) / 2 | 0;
+    const ins = m.insert2
+      ? [(m.insert[0] + m.insert2[0]) / 2, (m.insert[1] + m.insert2[1]) / 2, (m.insert[2] + m.insert2[2]) / 2]
+      : m.insert;
+    return bez(m.origins[i], ins, m.bow)(0.5);
+  }
+  return bez(m.from, m.to, m.bow)(0.5);
+}
+
+/* ==========================================================================
+   The figure — a clickable ecorche. Faces carry a region id, so a click is
+   hit-tested against the real geometry rather than an invisible hotspot map.
+   ========================================================================== */
+const SKIN     = [168, 116, 122];
+const SKIN_HOV = [206, 122, 132];
+const SKIN_SEL = [234, 104, 122];
+
+const torsoPath = t => [0, -0.34 + t * 2.84, 0];
+const torsoProf = t => ramp(t, [[0, 0.44], [0.14, 0.50], [0.34, 0.385],
+                                [0.52, 0.425], [0.80, 0.50], [0.94, 0.47], [1, 0.40]]);
+
+function buildBody(T, S) {
+  const tone = pick => (S.sel === pick) ? { c: SKIN_SEL, g: 0.26 }
+             : (S.hover === pick) ? { c: SKIN_HOV, g: 0.15 }
+             : { c: SKIN, g: 0 };
+
+  const ghost = S.viscera;
+  const seg = (t0, t1, a0, a1, pick, front) => {
+    const ts = [];
+    for (let i = 0; i <= 9; i++) ts.push(t0 + (t1 - t0) * i / 9);
+    const tn = tone(pick);
+    const see = ghost && front;
+    tube({
+      path: torsoPath, radius: torsoProf, ts, radial: 13, a0, a1, oval: 0.24,
+      color: tn.c, glow: see ? 0 : tn.g, pick: see ? null : pick,
+      alpha: see ? 0.26 : 1,
+      gloss: 0.28, rim: see ? 0.9 : 0.5, amb: see ? 0.5 : 0.26
+    });
+  };
+  const PI = Math.PI;
+  seg(0.00, 0.22, 0, PI, 'thigh', false);
+  seg(0.00, 0.22, PI, TAU, 'thigh', false);
+  seg(0.22, 0.52, 0, PI, 'abdomen', true);
+  seg(0.22, 0.52, PI, TAU, 'back', false);
+  seg(0.52, 1.00, 0, PI, 'chest', true);
+  seg(0.52, 1.00, PI, TAU, 'back', false);
+
+  const limb = (from, to, r0, r1, pick, bow) => {
+    const tn = tone(pick);
+    tube({
+      path: bez(from, to, bow), radius: t => r0 + (r1 - r0) * t,
+      segs: 8, radial: 10, color: tn.c, glow: tn.g, pick,
+      gloss: 0.28, rim: 0.5, amb: 0.26
+    });
+  };
+
+  const hn = tone('neck');
+  ellipsoid([0, 3.06, 0.02], 0.33, 0.42, 0.35, hn.c,
+    { glow: hn.g, pick: 'neck', gloss: 0.3, rim: 0.5, amb: 0.26 }, 12, 8);
+  limb([0, 2.44, 0], [0, 2.76, 0.01], 0.16, 0.15, 'neck');
+
+  [-1, 1].forEach(s => {
+    const sh = tone('arm');
+    ellipsoid([s * 0.60, 2.30, 0], 0.24, 0.26, 0.23, sh.c,
+      { glow: sh.g, pick: 'arm', gloss: 0.28, rim: 0.5, amb: 0.26 }, 11, 7);
+    limb([s * 0.66, 2.28, 0], [s * 0.90, 1.12, 0.02], 0.185, 0.125, 'arm', [s * 0.06, 0, 0.03]);
+    limb([s * 0.90, 1.10, 0.02], [s * 1.02, -0.04, 0.07], 0.125, 0.082, 'forearm', [s * 0.05, 0, 0.07]);
+    limb([s * 1.02, -0.06, 0.07], [s * 1.07, -0.46, 0.09], 0.082, 0.052, 'forearm');
+    limb([s * 0.24, -0.28, 0], [s * 0.33, -1.82, 0.01], 0.265, 0.155, 'thigh', [s * 0.04, 0, 0.04]);
+    limb([s * 0.33, -1.84, 0.01], [s * 0.35, -3.00, 0.02], 0.155, 0.088, 'leg', [s * 0.015, 0, -0.05]);
+    limb([s * 0.35, -3.04, -0.03], [s * 0.36, -3.19, 0.34], 0.088, 0.10, 'leg');
+  });
+
+  if (ghost) {
+    const ht = tone('heart');
+    ellipsoid([-0.13, 1.92, 0.10], 0.21, 0.25, 0.20,
+      (S.sel === 'heart' || S.hover === 'heart') ? [232, 96, 76] : [198, 82, 66],
+      { glow: ht.g + 0.12, pick: 'heart', gloss: 0.45, rim: 0.5, amb: 0.32 }, 11, 7);
+    ellipsoid([-0.13, 2.16, 0.02], 0.17, 0.11, 0.16, [176, 78, 70],
+      { glow: 0.05, pick: 'heart', gloss: 0.4, rim: 0.5, amb: 0.3 }, 9, 6);
+    const gt = tone('gut');
+    const gpath = t => {
+      const a = t * TAU * 2.1;
+      return [Math.sin(a) * 0.26, 1.20 - t * 0.62, 0.10 + Math.cos(a) * 0.17];
+    };
+    tube({
+      path: gpath, radius: () => 0.088, segs: 44, radial: 8,
+      color: (S.sel === 'gut' || S.hover === 'gut') ? [222, 168, 140] : [190, 142, 118],
+      glow: gt.g, pick: 'gut', gloss: 0.35, rim: 0.5, amb: 0.30
+    });
+  }
+
+  return [['Figure', 'anterior'], ['Regions', String(REGION_ORDER.length)]];
+}
+
+/* ==========================================================================
+   Regions — what opens when you click a part of the figure
+   ========================================================================== */
+const REGION_ORDER = ['neck', 'chest', 'arm', 'forearm', 'back', 'abdomen', 'thigh', 'leg', 'heart', 'gut'];
+
+const REGIONS = {
+
+  neck: {
+    name: 'Head & neck', short: 'Head & neck', tissue: 'skeletal',
+    lede: 'The muscles of mastication move the mandible against the skull. The facial muscles are the exception in the whole body: they insert into skin, not bone, which is why a face can express anything.',
+    cam: { yaw: 0.66, pitch: 0.06, dist: 5.2 },
+    bones: [
+      { from: [0, 1.72, -0.10], to: [0, 1.70, 0.10], r: 0.52, segs: 6 },
+      { from: [-0.50, 1.06, 0.10], to: [0, 0.80, 0.42], r: 0.075, bow: [-0.10, -0.14, 0.10] },
+      { from: [0.50, 1.06, 0.10], to: [0, 0.80, 0.42], r: 0.075, bow: [0.10, -0.14, 0.10] },
+      { from: [0, 1.30, -0.30], to: [0, -0.42, -0.18], r: 0.085 },
+      { from: [-0.62, -0.62, 0.18], to: [0.62, -0.62, 0.18], r: 0.06, bow: [0, 0.06, 0.10] },
+      { from: [0, -0.46, 0.34], to: [0, -1.02, 0.30], r: 0.075 }
+    ],
+    muscles: [
+      { k: 'temporalis', n: 'Temporalis', color: M_MID, both: true, w: 0.085, lab: [-118, -72],
+        origins: [[0.44, 1.96, -0.14], [0.56, 1.80, 0.06], [0.50, 1.60, 0.24]],
+        insert: [0.34, 1.24, 0.20], bow: [0.16, 0.06, 0.04],
+        act: 'Elevates and retracts the mandible — the muscle you feel bulge at your temple when you clench.' },
+      { k: 'masseter', n: 'Masseter', color: M_SUP, both: true, w: 0.115, lab: [96, -30],
+        from: [0.52, 1.42, 0.16], to: [0.40, 0.92, 0.18], bow: [0.10, 0, 0.06],
+        act: 'The most powerful muscle in the body for its size. Elevates the mandible; it is what closes the bite.' },
+      { k: 'scm', n: 'Sternocleidomastoid', color: M_LIGHT, both: true, w: 0.105, lab: [104, 40],
+        from: [0.42, 1.22, -0.24], to: [0.12, -0.56, 0.30], bow: [0.16, 0.04, 0.16],
+        act: 'One side turns the head to the opposite shoulder; both together flex the neck. The landmark that divides the neck into triangles.' },
+      { k: 'orbic', n: 'Orbicularis oculi', color: M_LIGHT, w: 0.042, tendon: [0.02, 0.98], lab: [-132, -20],
+        at: [0.24, 1.62, 0.44],
+        path: t => [0.24 + Math.cos(t * TAU) * 0.17, 1.62 + Math.sin(t * TAU) * 0.13, 0.40 - Math.abs(Math.cos(t * TAU)) * 0.05],
+        act: 'A sphincter around the orbit that closes the eyelid. Like every facial muscle it inserts into skin, not bone.' },
+      { k: 'traps', n: 'Trapezius (upper)', color: M_MID, both: true, w: 0.10, lab: [88, 86],
+        origins: [[0.06, 1.28, -0.34], [0.08, 0.60, -0.30]], insert: [0.66, -0.48, -0.02],
+        bow: [0.10, 0.10, -0.10],
+        act: 'Elevates the scapula — the shrug. Its upper fibres also extend the neck.' }
+    ]
+  },
+
+  chest: {
+    name: 'Chest', short: 'Chest', tissue: 'skeletal',
+    lede: 'Pectoralis major fans off the whole front of the chest onto a single narrow insertion on the humerus. Behind it, the intercostals and the diaphragm do the quieter work of breathing.',
+    cam: { yaw: 0.44, pitch: 0.16, dist: 5.6 },
+    bones: (function () {
+      const b = [{ from: [0, 1.55, 0.50], to: [0, -0.34, 0.42], r: 0.085 }];
+      for (let i = 0; i < 6; i++) {
+        const y = 1.42 - i * 0.30;
+        [-1, 1].forEach(s => b.push({
+          from: [s * 0.10, y, -0.50], to: [s * 0.07, y - 0.20, 0.44],
+          bow: [s * 0.92, -0.04, 0.06], r: 0.045, segs: 16
+        }));
+      }
+      [-1, 1].forEach(s => {
+        b.push({ from: [s * 0.09, 1.70, 0.28], to: [s * 1.02, 1.58, 0.02], r: 0.055 });
+        b.push({ from: [s * 1.12, 1.52, 0], to: [s * 1.34, 0.42, 0], r: 0.09 });
+        b.push({ from: [s * 0.10, 1.55, -0.52], to: [s * 0.10, -0.30, -0.46], r: 0.075 });
+      });
+      return b;
+    })(),
+    muscles: [
+      { k: 'pecmaj', n: 'Pectoralis major', color: M_SUP, both: true, w: 0.135, lab: [-150, -60],
+        origins: [[-0.72, 1.62, 0.20], [-0.16, 1.40, 0.50], [-0.13, 0.96, 0.52],
+                  [-0.11, 0.50, 0.50], [-0.11, 0.06, 0.44]],
+        insert: [-1.14, 1.40, 0.10], bow: [-0.10, 0.04, 0.14],
+        act: 'Adducts, flexes and medially rotates the humerus. The classic convergent muscle: broad origin, narrow insertion, so the whole sheet pulls on one point.' },
+      { k: 'pecmin', n: 'Pectoralis minor', color: M_DEEP, both: true, w: 0.075, lab: [130, 14],
+        origins: [[-0.34, 0.94, 0.44], [-0.42, 0.62, 0.42], [-0.50, 0.32, 0.38]],
+        insert: [-0.86, 1.44, -0.06],
+        act: 'Deep to pectoralis major. Draws the scapula forward and down, and lifts the ribs when the shoulder is fixed.' },
+      { k: 'intercostal', n: 'External intercostals', color: M_MID, both: true, w: 0.052, lab: [138, 74],
+        origins: [[-0.62, 1.28, 0.24], [-0.66, 0.98, 0.26], [-0.68, 0.68, 0.26], [-0.68, 0.38, 0.24]],
+        insert: [-0.52, 0.98, 0.30], insert2: [-0.56, 0.10, 0.28], tendon: [0.08, 0.92],
+        act: 'Run downward and forward between adjacent ribs. They elevate the ribcage in inspiration.' },
+      { k: 'diaphragm', n: 'Diaphragm', color: M_LIGHT, w: 0.105, lab: [-150, 76],
+        at: [0, -0.06, 0.26], tendon: [0.08, 0.58],
+        origins: (function () { const o = []; for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; o.push([Math.cos(a) * 0.86, -0.34 + Math.sin(a) * 0.12, Math.sin(a) * 0.52]); } return o; })(),
+        insert: [0, 0.26, 0.02], bow: [0, 0.10, 0],
+        act: 'Skeletal muscle, but you rarely command it. Its fibres radiate from a central tendon; when they shorten the dome flattens and the thorax fills.' }
+    ]
+  },
+
+  arm: {
+    name: 'Shoulder & upper arm', short: 'Shoulder & arm', tissue: 'skeletal',
+    lede: 'A textbook antagonistic pair. Biceps brachii crosses the front of the elbow and flexes it; triceps brachii crosses the back and extends it. Neither can undo itself — it takes the other one.',
+    cam: { yaw: 0.86, pitch: 0.05, dist: 5.8 },
+    bones: [
+      { from: [-0.92, 1.74, 0.26], to: [-0.04, 1.80, -0.02], r: 0.062 },
+      { from: [0.46, 1.80, -0.46], to: [0.20, 1.10, -0.40], r: 0.085 },
+      { from: [0.02, 1.62, -0.04], to: [0.16, -0.62, 0], r: 0.115 },
+      { from: [0.00, -0.72, 0.10], to: [-0.08, -1.62, 0.14], r: 0.07 },
+      { from: [0.30, -0.66, -0.10], to: [0.24, -1.58, -0.06], r: 0.07 }
+    ],
+    muscles: [
+      { k: 'deltoid', n: 'Deltoid', color: M_SUP, w: 0.15, lab: [-128, -66],
+        origins: [[-1.02, 1.70, 0.24], [-0.34, 1.88, 0.04], [0.46, 1.74, -0.44]],
+        insert: [0.13, 0.42, 0.06], bow: [-0.34, 0.22, 0.06],
+        act: 'Caps the shoulder. The middle fibres abduct the arm; the anterior fibres flex it and the posterior fibres extend it.' },
+      { k: 'biceps', n: 'Biceps brachii', color: M_LIGHT, w: 0.155, lab: [122, -28],
+        origins: [[-0.04, 1.66, 0.12], [0.22, 1.60, 0.02]],
+        insert: [0.00, -0.88, 0.20], bow: [-0.04, 0, 0.26],
+        act: 'Two heads, crossing both the shoulder and the elbow. Flexes the elbow and — its stronger action — supinates the forearm.' },
+      { k: 'brachialis', n: 'Brachialis', color: M_DEEP, w: 0.125, lab: [-158, 26],
+        from: [0.10, 0.32, 0.16], to: [0.28, -0.90, 0.10], bow: [0, 0, 0.10],
+        act: 'Lies deep to biceps and inserts on the ulna, so it flexes the elbow whatever the forearm is doing. The workhorse flexor.' },
+      { k: 'triceps', n: 'Triceps brachii', color: M_MID, w: 0.145, lab: [126, 56],
+        origins: [[0.44, 1.54, -0.30], [0.26, 1.04, -0.26], [0.10, 0.74, -0.22]],
+        insert: [0.26, -0.64, -0.24], bow: [0.06, 0, -0.22],
+        act: 'Three heads on the back of the arm converging on the olecranon. The only real extensor of the elbow.' }
+    ]
+  },
+
+  forearm: {
+    name: 'Forearm & hand', short: 'Forearm & hand', tissue: 'skeletal',
+    lede: 'Almost nothing that moves your fingers sits in your hand. The bellies are in the forearm and pull on long tendons that cross the wrist — which is why the forearm tapers and the fingers stay slim.',
+    cam: { yaw: 0.66, pitch: 0.08, dist: 5.4 },
+    bones: (function () {
+      const b = [
+        { from: [0.02, 2.12, 0], to: [0.06, 1.34, 0], r: 0.105 },
+        { from: [-0.28, 1.24, 0.14], to: [-0.36, -1.14, 0.16], r: 0.07 },
+        { from: [0.30, 1.30, -0.10], to: [0.24, -1.10, -0.10], r: 0.07 }
+      ];
+      for (let i = 0; i < 4; i++) {
+        b.push({ from: [-0.30 + i * 0.20, -1.22, 0.12], to: [-0.44 + i * 0.27, -1.98, 0.13], r: 0.032, segs: 8 });
+      }
+      return b;
+    })(),
+    muscles: [
+      { k: 'brachiorad', n: 'Brachioradialis', color: M_SUP, w: 0.125, lab: [-152, -52],
+        from: [-0.16, 1.36, 0.28], to: [-0.40, -1.06, 0.22], bow: [-0.16, 0, 0.12],
+        act: 'Flexes the elbow, and does it best with the forearm in mid-position — the muscle that carries a shopping bag.' },
+      { k: 'flexors', n: 'Flexor group (anterior)', color: M_LIGHT, w: 0.10, lab: [124, -12],
+        origins: [[0.32, 1.28, 0.08], [0.30, 1.24, 0.02], [0.28, 1.20, -0.02]],
+        insert: [-0.20, -1.10, 0.26], insert2: [0.28, -1.06, 0.20], bow: [0, 0, 0.18],
+        act: 'A common origin on the medial epicondyle. They flex the wrist and fingers; overuse inflames that origin as golfer’s elbow.' },
+      { k: 'extensors', n: 'Extensor group (posterior)', color: M_MID, w: 0.092, lab: [128, 48],
+        origins: [[-0.30, 1.30, -0.06], [-0.28, 1.26, -0.12], [-0.26, 1.22, -0.16]],
+        insert: [-0.26, -1.06, -0.20], insert2: [0.26, -1.04, -0.16], bow: [0, 0, -0.18],
+        act: 'A common origin on the lateral epicondyle. They extend the wrist and fingers; the same origin inflamed is tennis elbow.' },
+      { k: 'tendons', n: 'Long flexor tendons', color: TENDON_C, w: 0.032, tendon: [1, 1], lab: [-142, 62],
+        origins: [[-0.16, -1.14, 0.24], [0.02, -1.14, 0.24], [0.20, -1.12, 0.22]],
+        insert: [-0.40, -1.96, 0.18], insert2: [0.30, -1.94, 0.18],
+        act: 'Pure collagen, no contractile tissue. They run under the flexor retinaculum through the carpal tunnel, where swelling compresses the median nerve.' }
+    ]
+  },
+
+  back: {
+    name: 'Back', short: 'Back', tissue: 'skeletal',
+    lede: 'Two great superficial sheets — trapezius above, latissimus dorsi below — move the shoulder. Underneath them the erector spinae runs the length of the column and holds you upright without being asked.',
+    cam: { yaw: 3.30, pitch: 0.14, dist: 6.4 },
+    bones: (function () {
+      const b = [{ from: [0, 2.62, -0.34], to: [0, -1.34, -0.28], r: 0.10, segs: 18 }];
+      for (let i = 0; i < 12; i++) {
+        const y = 2.42 - i * 0.32;
+        b.push({ from: [0, y, -0.34], to: [0, y - 0.06, -0.56], r: 0.035, segs: 6 });
+      }
+      [-1, 1].forEach(s => {
+        b.push({ from: [s * 0.28, 2.28, -0.46], to: [s * 1.02, 2.06, -0.30], r: 0.06 });
+        b.push({ from: [s * 0.12, -1.20, -0.30], to: [s * 0.72, -1.02, -0.10], r: 0.08 });
+        b.push({ from: [s * 1.12, 2.10, -0.16], to: [s * 1.30, 1.10, -0.06], r: 0.085 });
+      });
+      return b;
+    })(),
+    muscles: [
+      { k: 'trapezius', n: 'Trapezius', color: M_SUP, both: true, w: 0.115, lab: [-146, -66],
+        origins: [[-0.04, 2.70, -0.40], [-0.05, 2.10, -0.40], [-0.06, 1.50, -0.38], [-0.07, 0.90, -0.36], [-0.08, 0.44, -0.34]],
+        insert: [-1.00, 2.24, -0.22], insert2: [-0.62, 1.92, -0.34], bow: [-0.06, 0.06, -0.08],
+        act: 'A diamond spanning both sides. Upper fibres elevate the scapula, middle fibres retract it, lower fibres depress it — one muscle, three opposing jobs.' },
+      { k: 'lats', n: 'Latissimus dorsi', color: M_MID, both: true, w: 0.13, lab: [136, 26],
+        origins: [[-0.10, 0.36, -0.34], [-0.30, -0.16, -0.32], [-0.52, -0.66, -0.26], [-0.74, -1.02, -0.16]],
+        insert: [-1.14, 2.04, -0.06], bow: [-0.20, 0.10, -0.06],
+        act: 'Extends, adducts and medially rotates the humerus. It is the muscle that pulls you up in a chin-up, and the reason a swimmer’s back is wide.' },
+      { k: 'erector', n: 'Erector spinae', color: M_DEEP, both: true, w: 0.125, lab: [130, 76],
+        from: [0.22, 2.32, -0.44], to: [0.20, -1.10, -0.34], bow: [0.05, 0, -0.10], tendon: [0.05, 0.95],
+        act: 'Three long columns either side of the spinous processes. They extend the vertebral column and hold posture continuously — largely slow oxidative, type I fibres.' }
+    ]
+  },
+
+  abdomen: {
+    name: 'Abdominal wall', short: 'Abdomen', tissue: 'skeletal',
+    lede: 'Three sheets laid across each other at different angles, like plywood, with a strap muscle down the middle. The tendinous intersections crossing rectus abdominis are what make a six-pack segmented.',
+    cam: { yaw: 0.38, pitch: 0.14, dist: 5.4 },
+    bones: (function () {
+      const b = [{ from: [0, 1.62, 0.46], to: [0, 1.10, 0.44], r: 0.07 }];
+      for (let i = 0; i < 3; i++) {
+        const y = 1.46 - i * 0.26;
+        [-1, 1].forEach(s => b.push({
+          from: [s * 0.10, y, -0.42], to: [s * 0.08, y - 0.24, 0.42],
+          bow: [s * 0.86, -0.06, 0.06], r: 0.042, segs: 16
+        }));
+      }
+      [-1, 1].forEach(s => {
+        b.push({ from: [s * 0.10, -0.34, -0.34], to: [s * 0.76, -0.20, 0.14], r: 0.07, bow: [s * 0.10, 0.16, 0.08] });
+        b.push({ from: [s * 0.60, -0.42, 0.20], to: [0, -0.66, 0.36], r: 0.055 });
+      });
+      return b;
+    })(),
+    muscles: [
+      { k: 'rectus', n: 'Rectus abdominis', color: M_SUP, both: true, w: 0.105, lab: [122, -60],
+        at: [0.20, 0.62, 0.50],
+        origins: [[0.20, 1.42, 0.48], [0.20, 1.02, 0.50], [0.20, 0.62, 0.50], [0.20, 0.22, 0.48]],
+        insert: [0.17, 1.06, 0.50], insert2: [0.17, -0.42, 0.44], tendon: [0.10, 0.90],
+        act: 'A strap running rib to pubis, crossed by tendinous intersections. Flexes the trunk and, with the obliques, raises intra-abdominal pressure.' },
+      { k: 'extoblique', n: 'External oblique', color: M_MID, both: true, w: 0.085, lab: [-158, -14],
+        origins: [[-0.66, 1.42, 0.16], [-0.74, 1.10, 0.24], [-0.78, 0.78, 0.28], [-0.78, 0.46, 0.30]],
+        insert: [-0.28, 0.22, 0.46], insert2: [-0.10, -0.44, 0.42], bow: [-0.06, 0, 0.08],
+        act: 'Fibres run downward and forward — hands-in-pockets direction. One side rotates the trunk to the opposite side.' },
+      { k: 'intoblique', n: 'Internal oblique', color: M_DEEP, both: true, w: 0.068, lab: [138, 24],
+        origins: [[-0.70, -0.14, 0.18], [-0.72, 0.14, 0.24], [-0.70, 0.42, 0.28]],
+        insert: [-0.20, 1.20, 0.42], insert2: [-0.12, 0.34, 0.44], bow: [-0.04, 0, 0.06],
+        act: 'Fibres run at right angles to the external oblique. One side rotates the trunk to the same side.' },
+      { k: 'transversus', n: 'Transversus abdominis', color: [148, 52, 66], both: true, w: 0.058, lab: [-152, 62],
+        origins: [[-0.74, 1.06, -0.02], [-0.76, 0.62, 0.02], [-0.74, 0.18, 0.02]],
+        insert: [-0.06, 1.02, 0.42], insert2: [-0.06, 0.16, 0.42],
+        act: 'The deepest layer, running horizontally. It is the corset: it compresses the abdomen rather than moving the trunk.' },
+      { k: 'linea', n: 'Linea alba', color: TENDON_C, w: 0.05, tendon: [1, 1], lab: [-120, 86],
+        from: [0, 1.52, 0.48], to: [0, -0.52, 0.42],
+        act: 'The midline seam where the aponeuroses of all three sheets from both sides interlace. Bloodless, which is why it is the surgeon’s way in.' }
+    ]
+  },
+
+  thigh: {
+    name: 'Hip & thigh', short: 'Hip & thigh', tissue: 'skeletal',
+    lede: 'The biggest muscles in the body, arranged front and back. Quadriceps femoris extends the knee through a single tendon that swallows the patella; the hamstrings do the opposite.',
+    cam: { yaw: 0.92, pitch: 0.07, dist: 6.2 },
+    bones: [
+      { from: [-0.55, 2.14, 0.02], to: [0.68, 2.06, -0.14], r: 0.14, bow: [0, 0.16, -0.06] },
+      { from: [0.16, 2.40, -0.46], to: [0.16, 1.58, -0.40], r: 0.10 },
+      { from: [0.16, 1.92, -0.06], to: [0.02, -1.32, 0.02], r: 0.125 },
+      { from: [0.02, -1.44, 0.06], to: [-0.02, -2.46, 0.06], r: 0.095 }
+    ],
+    muscles: [
+      { k: 'glutmax', n: 'Gluteus maximus', color: M_SUP, w: 0.185, lab: [128, -66],
+        origins: [[0.04, 2.36, -0.58], [0.42, 2.20, -0.54], [0.64, 1.84, -0.42]],
+        insert: [0.18, 0.74, -0.38], bow: [0.12, 0.10, -0.24],
+        act: 'The largest muscle in the body. Extends and laterally rotates the hip — it is what gets you off a chair and up a stair.' },
+      { k: 'rectusfem', n: 'Rectus femoris', color: M_LIGHT, w: 0.15, lab: [-160, -30],
+        from: [0.06, 2.06, 0.30], to: [0.02, -1.20, 0.32], bow: [0, 0, 0.24], tendon: [0.10, 0.84],
+        act: 'The only head of quadriceps that crosses the hip as well as the knee, so it both flexes the hip and extends the knee.' },
+      { k: 'vastlat', n: 'Vastus lateralis', color: M_MID, w: 0.16, lab: [-164, 16],
+        from: [-0.28, 1.36, 0.02], to: [-0.06, -1.22, 0.28], bow: [-0.24, 0, 0.14], tendon: [0.10, 0.82],
+        act: 'The bulk of quadriceps on the outer thigh. With the other three heads it inserts through the patella into the tibial tuberosity.' },
+      { k: 'vastmed', n: 'Vastus medialis', color: M_MID, w: 0.15, lab: [140, -8],
+        from: [0.48, 0.86, 0.08], to: [0.12, -1.20, 0.30], bow: [0.24, 0, 0.16], tendon: [0.10, 0.82],
+        act: 'The teardrop just above the inner knee. Its lowest fibres stabilise the patella as the knee locks out.' },
+      { k: 'hamstrings', n: 'Hamstrings', color: [176, 66, 78], w: 0.14, lab: [140, 80],
+        origins: [[0.20, 2.20, -0.44], [0.26, 2.22, -0.46]],
+        insert: [-0.22, -1.36, -0.20], insert2: [0.28, -1.36, -0.16], bow: [0, 0, -0.24], tendon: [0.09, 0.84],
+        act: 'Biceps femoris, semitendinosus and semimembranosus. They cross both joints: extending the hip and flexing the knee.' },
+      { k: 'sartorius', n: 'Sartorius', color: TENDON_C, w: 0.062, lab: [-150, 62],
+        from: [0.62, 2.04, 0.18], to: [0.30, -1.30, -0.02], bow: [0.40, 0.10, 0.34], tendon: [0.04, 0.96],
+        act: 'The longest muscle in the body, spiralling from the iliac spine to the medial tibia. It crosses the leg — the tailor’s posture that named it.' }
+    ]
+  },
+
+  leg: {
+    name: 'Leg & foot', short: 'Leg & foot', tissue: 'skeletal',
+    lede: 'Gastrocnemius and soleus share the Achilles tendon, the thickest in the body. Soleus is nearly all slow oxidative fibre — it holds you standing all day without tiring.',
+    cam: { yaw: 0.80, pitch: 0.06, dist: 5.6 },
+    bones: (function () {
+      const b = [
+        { from: [0, 2.16, 0], to: [0.02, 1.30, 0], r: 0.115 },
+        { from: [0.10, 1.24, 0.05], to: [0.12, -1.44, 0.05], r: 0.095 },
+        { from: [-0.28, 1.16, -0.02], to: [-0.30, -1.42, 0], r: 0.05 },
+        { from: [0.05, -1.58, -0.30], to: [0.06, -1.76, -0.02], r: 0.10 }
+      ];
+      for (let i = 0; i < 3; i++) {
+        b.push({ from: [-0.04 + i * 0.14, -1.80, 0.04], to: [-0.10 + i * 0.20, -1.92, 0.78], r: 0.035, segs: 8 });
+      }
+      return b;
+    })(),
+    muscles: [
+      { k: 'gastroc', n: 'Gastrocnemius', color: M_SUP, w: 0.175, lab: [128, -56],
+        origins: [[0.28, 1.20, -0.20], [-0.20, 1.18, -0.22]],
+        insert: [0.06, -1.60, -0.26], bow: [0, 0.06, -0.30], tendon: [0.08, 0.58],
+        act: 'Two heads from the femoral condyles, so it crosses the knee as well as the ankle. Plantarflexes the foot — the push-off in every step and jump.' },
+      { k: 'soleus', n: 'Soleus', color: M_MID, w: 0.145, lab: [132, 4],
+        from: [0.02, 0.70, -0.30], to: [0.06, -1.60, -0.26], bow: [0, 0, -0.22], tendon: [0.06, 0.56],
+        act: 'Broad and flat, deep to gastrocnemius, crossing only the ankle. Postural, and the classic slow-twitch red muscle of the body.' },
+      { k: 'achilles', n: 'Calcaneal (Achilles) tendon', color: TENDON_C, w: 0.075, tendon: [1, 1], lab: [124, 56],
+        from: [0.06, -0.66, -0.30], to: [0.06, -1.58, -0.28],
+        act: 'The shared insertion of gastrocnemius and soleus onto the calcaneus. The thickest and strongest tendon in the body.' },
+      { k: 'tibant', n: 'Tibialis anterior', color: M_LIGHT, w: 0.10, lab: [-166, 26],
+        from: [-0.02, 0.84, 0.22], to: [0.16, -1.70, 0.26], bow: [-0.06, 0, 0.20], tendon: [0.08, 0.70],
+        act: 'Runs down the front of the shin. Dorsiflexes the foot and clears the toes in the swing phase of walking; its failure is foot-drop.' }
+    ]
+  },
+
+  heart: {
+    name: 'Heart', short: 'Heart — cardiac', tissue: 'cardiac',
+    lede: 'The ventricular myocardium is not a bag of muscle but a helical band, wound so that contraction wrings blood upward rather than merely squeezing inward. Built of branched, striated, involuntary cardiac muscle.',
+    cam: { yaw: 0.46, pitch: 0.16, dist: 5.0 },
+    anim: true,
+    custom: true,
+    features: [
+      { k: 'ventricle', term: 'Ventricular myocardium', d: 'Thickest on the left, where pressure is highest. Its fibres spiral in opposing helices, so systole is a twist as well as a squeeze.' },
+      { k: 'atrium', term: 'Atria', d: 'Thin-walled receiving chambers. Their myocytes carry granules of ANP, released when the atrium is stretched.' },
+      { k: 'aorta', term: 'Great vessels', d: 'Aorta and pulmonary trunk. Cardiac muscle extends a short way into the walls of the veins entering the heart.' },
+      { k: 'spiral', term: 'Helical fibre bands', d: 'The surface fibres run obliquely and reverse direction in the deeper layer — the reason the apex rotates against the base with every beat.' },
+      { k: 'coronary', term: 'Coronary arteries', d: 'The myocardium is obligately aerobic and cannot borrow oxygen from the blood in its own chambers. Close one of these and the muscle downstream infarcts.' }
+    ]
+  },
+
+  gut: {
+    name: 'Gut wall', short: 'Gut — smooth', tissue: 'smooth',
+    lede: 'Two smooth muscle coats at right angles: an inner circular layer that narrows the lumen and an outer longitudinal layer that shortens the tube. Between them sits the nerve plexus that sets the rhythm.',
+    cam: { yaw: 0.40, pitch: 0.26, dist: 5.9 },
+    anim: true,
+    custom: true,
+    features: [
+      { k: 'circular', term: 'Circular muscle layer', d: 'Rings of smooth muscle. Contracting behind the bolus, they narrow the lumen and drive the contents forward.' },
+      { k: 'longitudinal', term: 'Longitudinal muscle layer', d: 'Runs along the tube. Contracting ahead of the bolus, it shortens and widens the segment to receive it.' },
+      { k: 'plexus', term: 'Myenteric plexus', d: 'Sandwiched between the two coats. With the interstitial cells of Cajal it generates the slow waves that pace peristalsis — no brain required.' },
+      { k: 'mucosa', term: 'Mucosa & submucosa', d: 'The folded absorptive lining, thrown into villi. It rides on the muscle rather than driving it.' },
+      { k: 'peristalsis', term: 'Peristalsis', d: 'The coordinated wave you can see travelling along the model. Single-unit smooth muscle is coupled by gap junctions, so the whole ring fires together.' }
+    ]
+  }
+};
+
+/* --- the two visceral regions need their own geometry --- */
+function buildHeart(T, S) {
+  const beat = S.anim ? (function () {
+    const u = ((T * 0.85) % 1 + 1) % 1;
+    if (u < 0.16) return Math.sin(u / 0.16 * Math.PI * 0.5);
+    if (u < 0.44) return Math.cos((u - 0.16) / 0.28 * Math.PI * 0.5) * 0.98;
+    return 0;
+  })() : S.contract;
+  const k = 1 - 0.085 * beat;
+  const lit = key => S.sel === key ? 0.26 : 0;
+
+  /* ventricular mass — a blunt cone, apex down and to the left */
+  tube({
+    path: t => [0.12 - t * 0.62, 0.92 - t * 2.10, 0.04 - t * 0.10],
+    radius: t => (0.90 - 0.80 * Math.pow(t, 1.7)) * (0.82 + 0.18 * Math.sin(Math.PI * Math.min(1, t * 1.3))) * k,
+    segs: 16, radial: 16, oval: 0.14, color: [196, 78, 62],
+    gloss: 0.42, rim: 0.55, amb: 0.28, pick: 'ventricle', glow: lit('ventricle') + beat * 0.10
+  });
+
+  /* atria */
+  [[-0.46, 1.16, -0.10, 0.40], [0.62, 1.02, -0.06, 0.34]].forEach(a => {
+    ellipsoid([a[0], a[1], a[2]], a[3], a[3] * 0.78, a[3] * 0.86, [168, 74, 68],
+      { gloss: 0.4, rim: 0.5, amb: 0.3, pick: 'atrium', glow: lit('atrium') + beat * 0.06 }, 11, 7);
+  });
+
+  /* great vessels */
+  tube({ path: bez([0.06, 1.20, 0.10], [0.30, 1.55, -0.85], [0.10, 1.05, -0.20]), radius: () => 0.20,
+         segs: 14, radial: 10, color: [212, 150, 140], gloss: 0.4, rim: 0.5, amb: 0.32, pick: 'aorta', glow: lit('aorta') });
+  tube({ path: bez([-0.20, 1.16, 0.34], [-0.66, 1.72, -0.24], [-0.30, 1.30, 0.30]), radius: () => 0.17,
+         segs: 14, radial: 10, color: [150, 152, 196], gloss: 0.4, rim: 0.5, amb: 0.32, pick: 'aorta', glow: lit('aorta') });
+  tube({ path: bez([0.52, 1.30, -0.16], [0.72, 2.05, -0.30], [0.60, 1.60, -0.20]), radius: () => 0.15,
+         segs: 10, radial: 9, color: [140, 146, 190], gloss: 0.4, rim: 0.5, amb: 0.32, pick: 'aorta', glow: lit('aorta') });
+
+  /* helical myocardial bands wound over the ventricle */
+  for (let i = 0; i < 5; i++) {
+    const ph = i / 5 * TAU;
+    const dir = i % 2 ? 1 : -1;
+    tube({
+      path: t => {
+        const y = 0.86 - t * 1.90, u = t;
+        const rr = (0.90 - 0.80 * Math.pow(u, 1.7)) * (0.82 + 0.18 * Math.sin(Math.PI * Math.min(1, u * 1.3))) * k + 0.025;
+        const a = ph + dir * u * 3.4;
+        return [0.12 - u * 0.62 + Math.cos(a) * rr, y, 0.04 - u * 0.10 + Math.sin(a) * rr];
+      },
+      radius: t => 0.055 * (1 - 0.55 * t), segs: 26, radial: 6,
+      color: [236, 128, 100], gloss: 0.5, rim: 0.5, amb: 0.34,
+      pick: 'spiral', glow: lit('spiral') + 0.06
+    });
+  }
+
+  /* coronary arteries */
+  tube({ path: t => [0.10 - t * 0.50, 0.86 - t * 1.66, 0.30 + Math.sin(t * 2.2) * 0.34],
+         radius: () => 0.048, segs: 18, radial: 6, color: [232, 196, 96],
+         gloss: 0.5, rim: 0.4, amb: 0.45, pick: 'coronary', glow: lit('coronary') + 0.15 });
+  tube({ path: t => [0.16 + t * 0.30, 0.88 - t * 1.20, -0.10 - t * 0.34],
+         radius: () => 0.042, segs: 14, radial: 6, color: [232, 196, 96],
+         gloss: 0.5, rim: 0.4, amb: 0.45, pick: 'coronary', glow: lit('coronary') + 0.15 });
+
+  if (S.labels) {
+    label([-0.20, 0.20, 0.62], 'Ventricular myocardium', -60, 96, 'ventricle');
+    label([0.62, 1.02, 0.24], 'Atrium', 108, -22, 'atrium');
+    label([0.24, 1.52, -0.60], 'Aorta', 96, -76, 'aorta');
+    label([0.30, 0.30, 0.72], 'Helical fibre band', 108, 24, 'spiral');
+    label([-0.24, 0.34, 0.44], 'Coronary artery', -178, -44, 'coronary');
+  }
+  return [['Tissue', 'cardiac'], ['Phase', beat > 0.45 ? 'systole' : 'diastole'],
+          ['Fatigue', 'none']];
+}
+
+function buildGut(T, S) {
+  const L = 3.8, PI = Math.PI;
+  const waveAt = x => {
+    if (!S.anim) return S.contract * Math.exp(-Math.pow((x + 0.5) * 0.85, 2));
+    return Math.pow(0.5 + 0.5 * Math.sin(T * 1.15 - x * 1.05), 3);
+  };
+  const lit = k => S.sel === k ? 0.30 : 0;
+  const rL = x => 0.58 * (1 - 0.46 * waveAt(x));      /* the lumen closes as the wave passes */
+
+  /* Each coat is peeled back a little further than the one outside it, so the
+     wall reads as a staircase of layers — the standard cut-away plate. */
+  const aA = 0.60 * PI, aB = 2.30 * PI;
+  const LAY = [
+    { k: 'mucosa',       th: 0.12, c: [214, 148, 164], step: 0.000 * PI },
+    { k: 'mucosa',       th: 0.06, c: [212, 184, 178], step: 0.055 * PI },
+    { k: 'circular',     th: 0.16, c: [222, 106, 116], step: 0.105 * PI },
+    { k: 'plexus',       th: 0.05, c: [216, 178, 112], step: 0.150 * PI },
+    { k: 'longitudinal', th: 0.14, c: [188,  84,  96], step: 0.185 * PI },
+    { k: 'serosa',       th: 0.05, c: [226, 214, 206], step: 0.240 * PI }
+  ];
+  const rAt = (i, x) => { let r = rL(x); for (let j = 0; j < i; j++) r += LAY[j].th; return r; };
+
+  const ptAt = (x, r, a) => [x, Math.sin(a) * r, -Math.cos(a) * r];
+  const cutFace = (a, i, col, pick) => {
+    const n = 24;
+    for (let q = 0; q < n; q++) {
+      const x0 = -L / 2 + q / n * L, x1 = -L / 2 + (q + 1) / n * L;
+      quadW(ptAt(x0, rAt(i, x0), a), ptAt(x0, rAt(i + 1, x0), a),
+            ptAt(x1, rAt(i + 1, x1), a), ptAt(x1, rAt(i, x1), a),
+            col, { amb: 0.48, gloss: 0.2, rim: 0.35, dbl: true, pick, glow: lit(pick) });
+    }
+  };
+
+  /* the lumen, thrown into villi */
+  tube({
+    path: t => [-L / 2 + t * L, 0, 0],
+    radius: t => rL(-L / 2 + t * L) * (0.90 + 0.045 * Math.sin(t * 74)),
+    segs: 110, radial: 16, a0: aA, a1: aB, dbl: true,
+    color: [212, 146, 162], gloss: 0.22, rim: 0.8, amb: 0.36,
+    pick: 'mucosa', glow: lit('mucosa')
+  });
+
+  LAY.forEach((ly, i) => {
+    const a0 = aA + ly.step;
+    const rOut = x => rAt(i + 1, x);
+
+    if (ly.k === 'longitudinal') {
+      /* fibres running along the tube — drawn as discrete strips */
+      const n = 30;
+      for (let j = 0; j < n; j++) {
+        const a = a0 + (j + 0.5) / n * (aB - a0);
+        tube({
+          path: t => { const x = -L / 2 + t * L; return ptAt(x, rOut(x) - ly.th * 0.45, a); },
+          radius: t => ly.th * 0.62 * (1 + 0.30 * waveAt(-L / 2 + t * L)),
+          segs: 26, radial: 5, color: ly.c,
+          gloss: 0.3, rim: 0.5, amb: 0.28, pick: ly.k, glow: lit(ly.k)
+        });
+      }
+    } else if (ly.k === 'circular') {
+      /* fibres running around the tube — transverse banding on the shell */
+      tube({
+        path: t => [-L / 2 + t * L, 0, 0], radius: t => rOut(-L / 2 + t * L),
+        segs: 96, radial: 16, a0, a1: aB,
+        color: t => {
+          const x = -L / 2 + t * L;
+          const k = (0.80 + 0.40 * Math.pow(Math.sin(t * 62), 2)) * (1 + 0.28 * waveAt(x));
+          return [ly.c[0] * k, ly.c[1] * k, ly.c[2] * k];
+        },
+        gloss: 0.3, rim: 0.5, amb: 0.28, pick: ly.k, glow: lit(ly.k)
+      });
+    } else {
+      tube({
+        path: t => [-L / 2 + t * L, 0, 0], radius: t => rOut(-L / 2 + t * L),
+        segs: 26, radial: 16, a0, a1: aB, color: ly.c,
+        alpha: ly.k === 'serosa' ? 0.42 : undefined,
+        gloss: ly.k === 'serosa' ? 0.55 : 0.26, rim: ly.k === 'serosa' ? 0.9 : 0.5,
+        amb: ly.k === 'serosa' ? 0.5 : 0.30, pick: ly.k, glow: lit(ly.k)
+      });
+    }
+    cutFace(a0, i, [ly.c[0] * 0.82, ly.c[1] * 0.82, ly.c[2] * 0.82], ly.k);
+  });
+
+  /* transverse cut at the near end — the layers as concentric rings */
+  const xEnd = -L / 2;
+  LAY.forEach((ly, i) => {
+    const a0 = aA + ly.step, n = 22;
+    for (let q = 0; q < n; q++) {
+      const b0 = a0 + q / n * (aB - a0), b1 = a0 + (q + 1) / n * (aB - a0);
+      quadW(ptAt(xEnd, rAt(i, xEnd), b0), ptAt(xEnd, rAt(i + 1, xEnd), b0),
+            ptAt(xEnd, rAt(i + 1, xEnd), b1), ptAt(xEnd, rAt(i, xEnd), b1),
+            ly.c, { amb: 0.52, gloss: 0.12, rim: 0.3, dbl: true, pick: ly.k, glow: lit(ly.k) });
+    }
+  });
+
+  if (S.labels) {
+    const la = a => ptAt(-0.7, rAt(6, -0.7) * 0.98, a);
+    label(la(aA + 0.60 * PI), 'Serosa', 118, 86, 'serosa');
+    label(la(aA + 0.215 * PI), 'Longitudinal layer', 140, -26, 'longitudinal');
+    label(la(aA + 0.170 * PI), 'Myenteric plexus', 146, -74, 'plexus');
+    label(ptAt(-0.6, rAt(3, -0.6), aA + 0.125 * PI), 'Circular layer', -184, -70, 'circular');
+    label(ptAt(-0.6, rAt(1, -0.6), aA + 0.025 * PI), 'Mucosa · villi', -178, 10, 'mucosa');
+    label([1.45, 0, rAt(6, 1.45) * 0.95], 'Peristaltic wave', 92, 96, 'peristalsis');
+  }
+  const w = waveAt(0);
+  return [['Tissue', 'smooth'], ['Lumen', (100 - 46 * w).toFixed(0) + ' %'],
+          ['Control', 'involuntary']];
+}
+
+function buildRegion(T, S) {
+  const R = REGIONS[curRegion];
+  if (curRegion === 'heart') return buildHeart(T, S);
+  if (curRegion === 'gut') return buildGut(T, S);
+
+  (R.bones || []).forEach(b => bone(b));
+  (R.muscles || []).forEach(m => {
+    drawMuscle(m, S.sel === m.k);
+    if (S.labels && m.lab) label(muscleAnchor(m), m.n, m.lab[0], m.lab[1], m.k);
+  });
+  return [['Tissue', R.tissue], ['Muscles', String((R.muscles || []).length)],
+          ['Control', R.tissue === 'skeletal' ? 'voluntary' : 'involuntary']];
+}
+
+
+/* ==========================================================================
    State + UI
    ========================================================================== */
 const state = {};
@@ -1849,17 +2730,123 @@ Object.keys(SCENES).forEach(k => {
   };
 });
 let cur = 'skeletal';
-let dirty = true;
+let curRegion = 'arm';
 
-const elName = document.getElementById('hudName');
-const elMag = document.getElementById('hudMag');
-const elMetrics = document.getElementById('hudMetrics');
-const elControls = document.getElementById('controls');
-const elReadout = document.getElementById('readout');
-const elTag = document.getElementById('roTag');
-const elTitle = document.getElementById('roTitle');
-const elLede = document.getElementById('roLede');
-const elFeatures = document.getElementById('roFeatures');
+const bodyState   = { sel: 'arm', hover: null, viscera: false, labels: false, anim: false };
+const regionState = { sel: null, labels: true, anim: !reduced, contract: 0.35 };
+
+const $ = id => document.getElementById(id);
+
+const HUE_HEX = { skeletal: '#E2687C', cardiac: '#DC6046', smooth: '#CFA48D', sarcomere: '#9A85E8' };
+const TISSUE_HEX = { skeletal: '#E2687C', cardiac: '#DC6046', smooth: '#CFA48D' };
+const TISSUE_VAR = { skeletal: 'var(--c-skeletal)', cardiac: 'var(--c-cardiac)', smooth: 'var(--c-smooth)' };
+const TISSUE_SCENE = { skeletal: 'skeletal', cardiac: 'cardiac', smooth: 'smooth' };
+
+/* ---------- views ---------- */
+function makeView(o) {
+  const cv = $(o.canvas);
+  return {
+    id: o.id, canvas: cv, ctx: cv.getContext('2d', { alpha: false }),
+    host: $(o.host),
+    cam: Object.assign({ yaw: 0.4, pitch: 0.2, dist: 11, fov: 1.02 }, o.cam),
+    W: 600, H: 400,
+    pool: [], active: [], overlay: [], labels: [], labelRects: [],
+    dirty: true, basis: o.basis || 'min',
+    build: o.build, animating: o.animating,
+    hue: o.hue, metricsEl: o.metrics ? $(o.metrics) : null,
+    pickable: !!o.pickable, onPick: o.onPick, onHover: o.onHover,
+    labelsOn: o.labelsOn, onLabelClick: o.onLabelClick
+  };
+}
+
+const views = [];
+const V = {};
+
+V.specimen = makeView({
+  id: 'specimen', canvas: 'stage', host: 'field', metrics: 'hudMetrics',
+  build: T => SCENES[cur].build(T, state[cur]),
+  animating: () => state[cur].anim,
+  labelsOn: () => state[cur].labels,
+  hue: () => HUE_HEX[cur],
+  onLabelClick: key => {
+    const S = state[cur];
+    S.sel = (S.sel === key) ? null : key;
+    syncSel(elFeatures, S.sel);
+    const row = elFeatures.querySelector('[data-key="' + key + '"]');
+    if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+});
+
+V.body = makeView({
+  id: 'body', canvas: 'bodyStage', host: 'bodyField', basis: 'h',
+  cam: { yaw: 0.30, pitch: 0.06, dist: 7.5 },
+  build: T => buildBody(T, bodyState),
+  animating: () => false,
+  labelsOn: () => false,
+  hue: () => '#E2687C',
+  pickable: true,
+  onHover: pick => {
+    if (bodyState.hover === pick) return;
+    bodyState.hover = pick;
+    V.body.canvas.style.cursor = pick ? 'pointer' : 'grab';
+    V.body.dirty = true;
+  },
+  onPick: pick => { if (pick && REGIONS[pick]) selectRegion(pick); }
+});
+
+V.region = makeView({
+  id: 'region', canvas: 'regionStage', host: 'regionField', metrics: 'regionMetrics',
+  build: T => buildRegion(T, regionState),
+  animating: () => regionState.anim && !!REGIONS[curRegion].anim,
+  labelsOn: () => regionState.labels,
+  hue: () => TISSUE_HEX[REGIONS[curRegion].tissue],
+  pickable: true,
+  onPick: pick => {
+    if (!pick) return;
+    regionState.sel = regionState.sel === pick ? null : pick;
+    syncSel(elRegionFeatures, regionState.sel);
+    const row = elRegionFeatures.querySelector('[data-key="' + pick + '"]');
+    if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    V.region.dirty = true;
+  },
+  onLabelClick: key => { V.region.onPick(key); }
+});
+
+views.push(V.specimen, V.body, V.region);
+const camDefaults = {};
+views.forEach(v => { camDefaults[v.id] = Object.assign({}, v.cam); });
+
+/* ---------- specimen panel ---------- */
+const elName = $('hudName');
+const elMag = $('hudMag');
+const elControls = $('controls');
+const elReadout = $('readout');
+const elTag = $('roTag');
+const elTitle = $('roTitle');
+const elLede = $('roLede');
+const elFeatures = $('roFeatures');
+
+function ctlButton(labelText, pressed, onClick) {
+  const b = document.createElement('button');
+  b.className = 'ctl'; b.type = 'button'; b.textContent = labelText;
+  if (pressed !== null) b.setAttribute('aria-pressed', String(!!pressed));
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function ctlSlider(labelText, id, value, min, max, onInput, wide) {
+  const wrap = document.createElement('div');
+  wrap.className = 'slider-ctl';
+  const lab = document.createElement('label');
+  lab.htmlFor = id; lab.textContent = labelText;
+  const inp = document.createElement('input');
+  inp.type = 'range'; inp.id = id;
+  inp.min = min; inp.max = max; inp.value = value;
+  if (wide) inp.style.width = '11rem';
+  inp.addEventListener('input', () => onInput(+inp.value));
+  wrap.append(lab, inp);
+  return wrap;
+}
 
 function buildControls() {
   const sc = SCENES[cur], S = state[cur];
@@ -1867,43 +2854,36 @@ function buildControls() {
   sc.controls.forEach(c => {
     if (c.t === 'slider' && c.hideWhenAnim && S.anim) return;
     if (c.t === 'toggle') {
-      const b = document.createElement('button');
-      b.className = 'ctl'; b.type = 'button'; b.textContent = c.label;
-      b.setAttribute('aria-pressed', String(!!S[c.id]));
-      b.addEventListener('click', () => {
-        S[c.id] = !S[c.id];
-        buildControls(); dirty = true;
-      });
-      elControls.appendChild(b);
+      elControls.appendChild(ctlButton(c.label, S[c.id], () => {
+        S[c.id] = !S[c.id]; buildControls(); V.specimen.dirty = true;
+      }));
     } else if (c.t === 'button') {
-      const b = document.createElement('button');
-      b.className = 'ctl'; b.type = 'button'; b.textContent = c.label;
-      b.addEventListener('click', () => { resetCam(); });
-      elControls.appendChild(b);
+      elControls.appendChild(ctlButton(c.label, null, () => resetCam(V.specimen)));
     } else if (c.t === 'slider') {
-      const wrap = document.createElement('div');
-      wrap.className = 'slider-ctl';
-      const lab = document.createElement('label');
-      const id = 'sl-' + c.id;
-      lab.htmlFor = id; lab.textContent = c.label;
-      const inp = document.createElement('input');
-      inp.type = 'range'; inp.id = id;
-      inp.min = c.min === undefined ? 0 : c.min;
-      inp.max = c.max === undefined ? 100 : c.max;
-      inp.value = c.id === 'rate' ? S.rate * 100 : S.contract * 100;
-      if (c.wide) inp.style.width = '11rem';
-      inp.addEventListener('input', () => {
-        if (c.id === 'rate') S.rate = +inp.value / 100;
-        else S.contract = +inp.value / 100;
-        dirty = true;
-      });
-      wrap.append(lab, inp);
-      elControls.appendChild(wrap);
+      const val = c.id === 'rate' ? S.rate * 100 : S.contract * 100;
+      elControls.appendChild(ctlSlider(c.label, 'sl-' + c.id, val,
+        c.min === undefined ? 0 : c.min, c.max === undefined ? 100 : c.max,
+        v => {
+          if (c.id === 'rate') S.rate = v / 100; else S.contract = v / 100;
+          V.specimen.dirty = true;
+        }, c.wide));
     }
   });
-  const sp = document.createElement('span');
-  sp.className = 'ctl-spacer';
-  elControls.appendChild(sp);
+}
+
+function featureRow(f, host, S, view) {
+  const row = document.createElement('div');
+  row.className = 'feat'; row.dataset.key = f.k;
+  const dt = document.createElement('dt'); dt.textContent = f.term;
+  const dd = document.createElement('dd'); dd.textContent = f.d;
+  row.append(dt, dd);
+  row.addEventListener('mouseenter', () => { S.sel = f.k; syncSel(host, S.sel); view.dirty = true; });
+  row.addEventListener('mouseleave', () => { S.sel = null; syncSel(host, S.sel); view.dirty = true; });
+  return row;
+}
+
+function syncSel(host, sel) {
+  host.querySelectorAll('.feat').forEach(el => el.classList.toggle('lit', el.dataset.key === sel));
 }
 
 function buildReadout() {
@@ -1913,29 +2893,12 @@ function buildReadout() {
   elTitle.textContent = sc.title;
   elLede.textContent = sc.lede;
   elFeatures.replaceChildren();
-  sc.features.forEach(f => {
-    const row = document.createElement('div');
-    row.className = 'feat'; row.dataset.key = f.k;
-    const dt = document.createElement('dt'); dt.textContent = f.term;
-    const dd = document.createElement('dd'); dd.textContent = f.d;
-    row.append(dt, dd);
-    row.addEventListener('mouseenter', () => { S.sel = f.k; syncSel(); dirty = true; });
-    row.addEventListener('mouseleave', () => { S.sel = null; syncSel(); dirty = true; });
-    elFeatures.appendChild(row);
-  });
+  sc.features.forEach(f => elFeatures.appendChild(featureRow(f, elFeatures, S, V.specimen)));
 }
 
-function syncSel() {
-  const S = state[cur];
-  elFeatures.querySelectorAll('.feat').forEach(el => {
-    el.classList.toggle('lit', el.dataset.key === S.sel);
-  });
-}
-
-function resetCam() {
-  const c = SCENES[cur].cam;
-  cam.yaw = c.yaw; cam.pitch = c.pitch; cam.dist = c.dist;
-  dirty = true;
+function resetCam(v) {
+  Object.assign(v.cam, camDefaults[v.id]);
+  v.dirty = true;
 }
 
 function selectScene(key) {
@@ -1945,110 +2908,233 @@ function selectScene(key) {
   });
   elName.textContent = SCENES[key].name;
   elMag.textContent = SCENES[key].sub;
-  resetCam();
+  camDefaults.specimen = Object.assign({ fov: 1.02 }, SCENES[key].cam);
+  resetCam(V.specimen);
   buildControls();
   buildReadout();
-  dirty = true;
 }
 
 document.querySelectorAll('.slide').forEach(b => {
   b.addEventListener('click', () => selectScene(b.dataset.scene));
 });
 
-/* ---------- pointer ---------- */
-let dragging = false, moved = 0, lastX = 0, lastY = 0;
-const pointers = new Map();
-let pinchStart = 0, pinchDist0 = 0;
+/* ---------- body atlas panel ---------- */
+const elRegionName = $('regionName');
+const elRegionSub = $('regionSub');
+const elRegionControls = $('regionControls');
+const elRegionReadout = $('regionReadout');
+const elRegionTag = $('regionTag');
+const elRegionTitle = $('regionTitle');
+const elRegionLede = $('regionLede');
+const elRegionFeatures = $('regionFeatures');
+const elRegionLink = $('regionLink');
+const elChips = $('regionChips');
+const elBodyControls = $('bodyControls');
 
-canvas.addEventListener('pointerdown', e => {
-  canvas.setPointerCapture(e.pointerId);
-  pointers.set(e.pointerId, [e.clientX, e.clientY]);
-  if (pointers.size === 1) { dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY; }
-  else if (pointers.size === 2) {
-    const p = [...pointers.values()];
-    pinchDist0 = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
-    pinchStart = cam.dist;
-  }
-  field.classList.add('touched');
-});
-canvas.addEventListener('pointermove', e => {
-  if (!pointers.has(e.pointerId)) return;
-  pointers.set(e.pointerId, [e.clientX, e.clientY]);
-  if (pointers.size === 2) {
-    const p = [...pointers.values()];
-    const d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
-    if (pinchDist0 > 4) { cam.dist = clamp(pinchStart * pinchDist0 / d, 3.2, 30); dirty = true; }
-    return;
-  }
-  if (!dragging) return;
-  const dx = e.clientX - lastX, dy = e.clientY - lastY;
-  lastX = e.clientX; lastY = e.clientY;
-  moved += Math.abs(dx) + Math.abs(dy);
-  cam.yaw += dx * 0.0072;
-  cam.pitch = clamp(cam.pitch + dy * 0.0062, -1.35, 1.35);
-  dirty = true;
-});
-function endPointer(e) {
-  pointers.delete(e.pointerId);
-  if (pointers.size === 0) dragging = false;
+function regionFeatures(R) {
+  if (R.features) return R.features;
+  return (R.muscles || []).map(m => ({ k: m.k, term: m.n, d: m.act }));
 }
-canvas.addEventListener('pointerup', e => {
-  if (moved < 5 && pointers.size === 1) hitLabels(e);
-  endPointer(e);
-});
-canvas.addEventListener('pointercancel', endPointer);
-canvas.addEventListener('lostpointercapture', endPointer);
 
-canvas.addEventListener('wheel', e => {
-  e.preventDefault();
-  cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.09), 3.2, 30);
-  field.classList.add('touched');
-  dirty = true;
-}, { passive: false });
+function buildChips() {
+  elChips.replaceChildren();
+  REGION_ORDER.forEach(k => {
+    const R = REGIONS[k];
+    const b = document.createElement('button');
+    b.className = 'chip'; b.type = 'button'; b.dataset.region = k;
+    b.style.setProperty('--chip-hue', TISSUE_VAR[R.tissue]);
+    b.textContent = R.short;
+    b.setAttribute('aria-pressed', String(k === curRegion));
+    b.addEventListener('click', () => selectRegion(k));
+    elChips.appendChild(b);
+  });
+}
 
-canvas.addEventListener('keydown', e => {
-  const k = e.key;
-  if (k === 'ArrowLeft') cam.yaw -= 0.09;
-  else if (k === 'ArrowRight') cam.yaw += 0.09;
-  else if (k === 'ArrowUp') cam.pitch = clamp(cam.pitch - 0.07, -1.35, 1.35);
-  else if (k === 'ArrowDown') cam.pitch = clamp(cam.pitch + 0.07, -1.35, 1.35);
-  else if (k === '+' || k === '=') cam.dist = clamp(cam.dist * 0.9, 3.2, 30);
-  else if (k === '-') cam.dist = clamp(cam.dist * 1.1, 3.2, 30);
-  else return;
-  e.preventDefault();
-  field.classList.add('touched');
-  dirty = true;
-});
+function buildBodyControls() {
+  elBodyControls.replaceChildren();
+  elBodyControls.appendChild(ctlButton('Viscera', bodyState.viscera, () => {
+    bodyState.viscera = !bodyState.viscera;
+    buildBodyControls();
+    V.body.dirty = true;
+  }));
+  elBodyControls.appendChild(ctlButton('Reset', null, () => resetCam(V.body)));
+}
 
-function hitLabels(e) {
-  const r = canvas.getBoundingClientRect();
-  const x = (e.clientX - r.left), y = (e.clientY - r.top);
-  const S = state[cur];
-  for (const lr of labelRects) {
-    if (x >= lr.x && x <= lr.x + lr.w && y >= lr.y && y <= lr.y + lr.h) {
-      S.sel = (S.sel === lr.key) ? null : lr.key;
-      syncSel();
-      const row = elFeatures.querySelector('[data-key="' + lr.key + '"]');
-      if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      dirty = true;
-      return;
+function buildRegionControls() {
+  const R = REGIONS[curRegion];
+  elRegionControls.replaceChildren();
+  if (R.anim) {
+    elRegionControls.appendChild(ctlButton(curRegion === 'heart' ? 'Beat' : 'Peristalsis',
+      regionState.anim, () => {
+        regionState.anim = !regionState.anim;
+        buildRegionControls(); V.region.dirty = true;
+      }));
+    if (!regionState.anim) {
+      elRegionControls.appendChild(ctlSlider('Contract', 'sl-region',
+        regionState.contract * 100, 0, 100, v => { regionState.contract = v / 100; V.region.dirty = true; }));
     }
   }
-  S.sel = null; syncSel(); dirty = true;
+  elRegionControls.appendChild(ctlButton('Labels', regionState.labels, () => {
+    regionState.labels = !regionState.labels;
+    buildRegionControls(); V.region.dirty = true;
+  }));
+  elRegionControls.appendChild(ctlButton('Reset view', null, () => resetCam(V.region)));
 }
 
-/* ---------- sizing ---------- */
-function resize() {
-  const r = field.getBoundingClientRect();
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
-  W = Math.max(320, Math.round(r.width));
-  H = Math.max(260, Math.round(r.height));
-  canvas.width = Math.round(W * DPR);
-  canvas.height = Math.round(H * DPR);
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  dirty = true;
+function selectRegion(key) {
+  curRegion = key;
+  const R = REGIONS[key];
+  bodyState.sel = key;
+  regionState.sel = null;
+  elChips.querySelectorAll('.chip').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.region === key));
+  });
+  elRegionName.textContent = R.name;
+  elRegionSub.textContent = R.tissue + ' muscle';
+  elRegionReadout.style.setProperty('--scene-hue', TISSUE_VAR[R.tissue]);
+  elRegionTag.textContent = R.tissue + ' muscle';
+  elRegionTitle.textContent = R.name;
+  elRegionLede.textContent = R.lede;
+  elRegionFeatures.replaceChildren();
+  regionFeatures(R).forEach(f => {
+    elRegionFeatures.appendChild(featureRow(f, elRegionFeatures, regionState, V.region));
+  });
+  elRegionLink.textContent = 'Open the ' + R.tissue + ' tissue specimen';
+  elRegionLink.onclick = () => {
+    selectScene(TISSUE_SCENE[R.tissue]);
+    $('scope').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  camDefaults.region = Object.assign({ fov: 1.02 }, R.cam);
+  resetCam(V.region);
+  buildRegionControls();
+  V.body.dirty = true;
 }
-new ResizeObserver(resize).observe(field);
+
+/* ---------- pointer, shared by every view ---------- */
+function attachPointer(v) {
+  const cv = v.canvas;
+  let dragging = false, moved = 0, lastX = 0, lastY = 0;
+  const pointers = new Map();
+  let pinchStart = 0, pinchDist0 = 0;
+
+  cv.addEventListener('pointerdown', e => {
+    cv.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 1) { dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY; }
+    else if (pointers.size === 2) {
+      const p = [...pointers.values()];
+      pinchDist0 = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
+      pinchStart = v.cam.dist;
+    }
+    if (v.host) v.host.classList.add('touched');
+  });
+
+  cv.addEventListener('pointermove', e => {
+    if (!pointers.has(e.pointerId)) {
+      if (v.pickable && v.onHover && !dragging) v.onHover(pickAt(v, e));
+      return;
+    }
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) {
+      const p = [...pointers.values()];
+      const d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
+      if (pinchDist0 > 4) { v.cam.dist = clamp(pinchStart * pinchDist0 / d, 2.6, 30); v.dirty = true; }
+      return;
+    }
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    v.cam.yaw += dx * 0.0072;
+    v.cam.pitch = clamp(v.cam.pitch + dy * 0.0062, -1.35, 1.35);
+    v.dirty = true;
+  });
+
+  const end = e => { pointers.delete(e.pointerId); if (pointers.size === 0) dragging = false; };
+  cv.addEventListener('pointerup', e => {
+    if (moved < 5 && pointers.size === 1) {
+      const key = hitLabels(v, e);
+      if (key === null && v.pickable && v.onPick) v.onPick(pickAt(v, e));
+    }
+    end(e);
+  });
+  cv.addEventListener('pointercancel', end);
+  cv.addEventListener('lostpointercapture', end);
+  cv.addEventListener('pointerleave', () => { if (v.onHover) v.onHover(null); });
+
+  cv.addEventListener('wheel', e => {
+    e.preventDefault();
+    v.cam.dist = clamp(v.cam.dist * (1 + Math.sign(e.deltaY) * 0.09), 2.6, 30);
+    if (v.host) v.host.classList.add('touched');
+    v.dirty = true;
+  }, { passive: false });
+
+  cv.addEventListener('keydown', e => {
+    const k = e.key;
+    if (k === 'ArrowLeft') v.cam.yaw -= 0.09;
+    else if (k === 'ArrowRight') v.cam.yaw += 0.09;
+    else if (k === 'ArrowUp') v.cam.pitch = clamp(v.cam.pitch - 0.07, -1.35, 1.35);
+    else if (k === 'ArrowDown') v.cam.pitch = clamp(v.cam.pitch + 0.07, -1.35, 1.35);
+    else if (k === '+' || k === '=') v.cam.dist = clamp(v.cam.dist * 0.9, 2.6, 30);
+    else if (k === '-') v.cam.dist = clamp(v.cam.dist * 1.1, 2.6, 30);
+    else return;
+    e.preventDefault();
+    if (v.host) v.host.classList.add('touched');
+    v.dirty = true;
+  });
+}
+
+function localXY(v, e) {
+  const r = v.canvas.getBoundingClientRect();
+  return [e.clientX - r.left, e.clientY - r.top];
+}
+
+/* Point-in-polygon against the faces of the last frame, nearest first — so a
+   click hits whatever the eye actually sees, with no hotspot map to maintain. */
+function pickAt(v, e) {
+  const xy = localXY(v, e), x = xy[0], y = xy[1];
+  const scan = list => {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const f = list[i];
+      if (!f.pick) continue;
+      let inside = false;
+      for (let a = 0, b = f.n - 1; a < f.n; b = a++) {
+        const ax = f.p[a * 2], ay = f.p[a * 2 + 1], bx = f.p[b * 2], by = f.p[b * 2 + 1];
+        if ((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) inside = !inside;
+      }
+      if (inside) return f.pick;
+    }
+    return null;
+  };
+  return scan(v.overlay) || scan(v.active);
+}
+
+function hitLabels(v, e) {
+  const xy = localXY(v, e), x = xy[0], y = xy[1];
+  for (const lr of v.labelRects) {
+    if (x >= lr.x && x <= lr.x + lr.w && y >= lr.y && y <= lr.y + lr.h) {
+      if (v.onLabelClick) v.onLabelClick(lr.key);
+      v.dirty = true;
+      return lr.key;
+    }
+  }
+  return null;
+}
+
+views.forEach(attachPointer);
+
+/* ---------- sizing ---------- */
+function resizeView(v) {
+  const r = (v.host || v.canvas).getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  v.W = Math.max(220, Math.round(r.width));
+  v.H = Math.max(200, Math.round(r.height));
+  v.canvas.width = Math.round(v.W * dpr);
+  v.canvas.height = Math.round(v.H * dpr);
+  v.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  v.dirty = true;
+}
+views.forEach(v => new ResizeObserver(() => resizeView(v)).observe(v.host || v.canvas));
 
 /* ---------- background: the illuminated field ---------- */
 function drawField() {
@@ -2059,7 +3145,6 @@ function drawField() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  /* a hint of out-of-focus tissue behind the specimen */
   const blobs = [[0.22, 0.30, 0.34, 'rgba(122,54,80,0.13)'],
                  [0.78, 0.66, 0.40, 'rgba(70,48,120,0.12)'],
                  [0.55, 0.16, 0.26, 'rgba(150,80,90,0.07)']];
@@ -2072,9 +3157,8 @@ function drawField() {
 }
 
 /* ---------- label pass ---------- */
-function drawLabels(hue) {
-  const S = state[cur];
-  labelRects = [];
+function drawLabels(hue, sel) {
+  labelRects.length = 0;
   ctx.save();
   ctx.font = '500 11px ui-monospace, "SF Mono", "DejaVu Sans Mono", Menlo, monospace';
   ctx.textBaseline = 'middle';
@@ -2087,12 +3171,10 @@ function drawLabels(hue) {
     const wTxt = ctx.measureText(l.text).width;
     const right = l.dx >= 0;
     const bx = right ? tx : tx - wTxt;
-    tx = clamp(bx, 8, W - wTxt - 8);
+    tx = clamp(bx, 8, Math.max(10, W - wTxt - 8));
     ty = clamp(ty, 16, H - 46);
 
-    const lit = S.sel === l.key;
-    const alpha = lit ? 1 : 0.72;
-
+    const lit = sel === l.key;
     ctx.strokeStyle = lit ? hue : 'rgba(210,196,222,0.42)';
     ctx.lineWidth = lit ? 1.4 : 1;
     ctx.beginPath();
@@ -2109,7 +3191,7 @@ function drawLabels(hue) {
 
     ctx.fillStyle = 'rgba(8,5,13,0.66)';
     ctx.fillRect(tx - 4, ty - 8, wTxt + 8, 16);
-    ctx.fillStyle = lit ? '#fff' : 'rgba(232,222,242,' + alpha + ')';
+    ctx.fillStyle = lit ? '#fff' : 'rgba(232,222,242,0.72)';
     ctx.fillText(l.text, tx, ty + 0.5);
 
     labelRects.push({ x: tx - 6, y: ty - 10, w: wTxt + 12, h: 20, key: l.key });
@@ -2117,75 +3199,75 @@ function drawLabels(hue) {
   ctx.restore();
 }
 
-const HUE_HEX = { skeletal: '#E2687C', cardiac: '#DC6046', smooth: '#CFA48D', sarcomere: '#9A85E8' };
-
 /* ---------- frame ---------- */
-let t0 = performance.now();
-function frame(now) {
-  const S = state[cur];
-  const animating = S.anim;
-  if (dirty || animating) {
-    dirty = false;
-    const T = (now - t0) / 1000;
-    camSync();
-    FOCAL = cam.fov * Math.min(W, H) * (W < 560 ? 0.66 : 0.86);
+const t0 = performance.now();
+function renderView(v, now) {
+  activate(v);
+  const T = (now - t0) / 1000;
+  camSync();
+  FOCAL = cam.fov * (v.basis === 'h' ? H : Math.min(W, H)) * (W < 560 && v.basis !== 'h' ? 0.66 : 0.86);
 
-    nPool = 0; active.length = 0; overlay.length = 0; labels.length = 0;
+  nPool = 0; active.length = 0; overlay.length = 0; labels.length = 0;
+  const metrics = v.build(T) || [];
 
-    const metrics = SCENES[cur].build(T, S) || [];
+  active.sort((a, b) => b.d - a.d);
+  overlay.sort((a, b) => b.d - a.d);
 
-    active.sort((a, b) => b.d - a.d);
-    overlay.sort((a, b) => b.d - a.d);
+  drawField();
+  ctx.lineJoin = 'round';
+  const paint = list => {
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      ctx.beginPath();
+      ctx.moveTo(f.p[0], f.p[1]);
+      for (let j = 1; j < f.n; j++) ctx.lineTo(f.p[j * 2], f.p[j * 2 + 1]);
+      if (f.fill) { ctx.closePath(); ctx.fillStyle = f.fill; ctx.fill(); }
+      if (f.line) { ctx.strokeStyle = f.line; ctx.lineWidth = f.lw; ctx.stroke(); }
+    }
+  };
+  paint(active);
+  paint(overlay);
 
-    drawField();
-    ctx.lineJoin = 'round';
-    const paint = list => {
-      for (let i = 0; i < list.length; i++) {
-        const f = list[i];
-        ctx.beginPath();
-        ctx.moveTo(f.p[0], f.p[1]);
-        for (let j = 1; j < f.n; j++) ctx.lineTo(f.p[j * 2], f.p[j * 2 + 1]);
-        if (f.fill) {
-          ctx.closePath();
-          ctx.fillStyle = f.fill;
-          ctx.fill();
-        }
-        if (f.line) {
-          ctx.strokeStyle = f.line;
-          ctx.lineWidth = f.lw;
-          ctx.stroke();
-        }
-      }
-    };
-    paint(active);
-    paint(overlay);
+  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.max(W, H) * 0.72);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
 
-    /* vignette — the edge of the field of view */
-    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.max(W, H) * 0.72);
-    vg.addColorStop(0, 'rgba(0,0,0,0)');
-    vg.addColorStop(1, 'rgba(0,0,0,0.55)');
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, W, H);
+  if (v.labelsOn()) {
+    const sel = v.id === 'specimen' ? state[cur].sel : (v.id === 'region' ? regionState.sel : null);
+    drawLabels(v.hue(), sel);
+  } else {
+    labelRects.length = 0;
+  }
 
-    if (S.labels) drawLabels(HUE_HEX[cur]);
-
-    elMetrics.replaceChildren();
+  if (v.metricsEl) {
+    v.metricsEl.replaceChildren();
     metrics.forEach(m => {
       const d = document.createElement('div');
-      d.innerHTML = '';
       d.append(m[0] + ' ');
       const b = document.createElement('b');
       b.textContent = m[1];
       d.appendChild(b);
-      elMetrics.appendChild(d);
+      v.metricsEl.appendChild(d);
     });
+  }
+}
+
+function frame(now) {
+  for (let i = 0; i < views.length; i++) {
+    const v = views[i];
+    if (v.dirty || v.animating()) { v.dirty = false; renderView(v, now); }
   }
   requestAnimationFrame(frame);
 }
 
 /* ---------- go ---------- */
-resize();
+views.forEach(resizeView);
 selectScene('skeletal');
+buildChips();
+buildBodyControls();
+selectRegion('arm');
 requestAnimationFrame(frame);
 
 })();
