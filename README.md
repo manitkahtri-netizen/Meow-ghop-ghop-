@@ -22,8 +22,17 @@ its explanation. Arrow keys rotate when the canvas has focus.
 
 ## The body atlas
 
-A second interactive below the specimens: a rotatable figure you click to open
+A second interactive below the specimens: a rotatable écorché you click to open
 the muscles of that part in 3D.
+
+The figure is not a mannequin with hotspots painted on it. The superficial
+muscle groups — pectoralis major, the four segments of rectus abdominis, the
+obliques, trapezius, latissimus, erector spinae, sternocleidomastoid, deltoid,
+biceps, triceps, the forearm masses, gluteus maximus, the quadriceps heads,
+hamstrings, gastrocnemius, tibialis anterior — are modelled as real bellies laid
+over a deep core, so hovering names the muscle you are actually pointing at.
+It breathes: the thorax lifts and widens at about thirteen breaths a minute,
+which is also the diaphragm's own entry in the chest region.
 
 Ten regions — head and neck, chest, shoulder and arm, forearm and hand, back,
 abdominal wall, hip and thigh, leg and foot, plus the heart and the gut wall.
@@ -57,9 +66,15 @@ onto whichever view is being built.
 - Clicking the figure hit-tests the real geometry: every face carries a region
   id, and a click runs point-in-polygon over the last frame's faces from
   nearest to farthest. No invisible hotspot map to keep in sync with the model.
-- Per-face flat shading: Lambert key light in view space, so the illumination
-  tracks the camera the way a microscope lamp does, plus a cool rim term and a
-  specular highlight for wet tissue.
+- A two-light rig in view space, so illumination tracks the camera the way a
+  microscope lamp does: a key light, a fill light from the opposite side and
+  below to keep the shadow side off flat black, a crude sky-occlusion term so
+  undersides sit back, a warm rim that reads as translucent tissue, and a
+  specular highlight for wetness.
+- Camera moves are eased rather than cut. Choosing a region turns the figure to
+  face it and swings the diagram to its best angle; a drag cancels the tween.
+- Views render only while on screen, so the breathing figure isn't competing
+  for frames while you're three sections away looking at a specimen.
 - Back-face culling, then a single depth sort across all faces per frame.
 - Central nuclei render in a second overlay pass so they read *through* the
   sarcoplasm without making the whole cell translucent.

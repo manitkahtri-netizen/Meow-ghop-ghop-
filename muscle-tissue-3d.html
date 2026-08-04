@@ -475,8 +475,30 @@ body { margin: 0; }   /* restates the host reset so the file also opens standalo
 }
 .body-field.touched .caption { opacity: 0; }
 
-#bodyControls { display: flex; flex-wrap: wrap; gap: .35rem; }
+.body-field .hud-metrics {
+  top: .5rem; right: .55rem;
+  font-size: .5rem; letter-spacing: .1em; gap: .12rem;
+  color: var(--stage-fg-3);
+}
+.body-tip {
+  position: absolute;
+  pointer-events: none;
+  font-family: var(--ff-mono);
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 76%, #120b18);
+  border-radius: 2px;
+  padding: .2rem .4rem;
+  white-space: nowrap;
+  z-index: 2;
+}
+.body-tip[hidden] { display: none; }
+
+#bodyControls { display: flex; flex-wrap: wrap; gap: .3rem; }
 #bodyControls .ctl {
+  padding: .34rem .48rem;
   color: var(--fg-2);
   background: transparent;
   border-color: var(--rule-firm);
@@ -793,7 +815,9 @@ tbody td b { color: var(--fg); font-weight: 600; }
       <div class="figure-col">
         <div class="body-field" id="bodyField">
           <canvas id="bodyStage" tabindex="0" aria-label="Rotatable 3D figure. Click a body region to open its muscles. Arrow keys rotate."></canvas>
-          <p class="caption">Click a region</p>
+          <div class="hud-metrics" id="bodyMetrics"></div>
+          <div class="body-tip" id="bodyTip" hidden></div>
+          <p class="caption">Hover a muscle · click to open</p>
         </div>
         <div id="bodyControls"></div>
         <div class="chips" id="regionChips" role="group" aria-label="Body regions"></div>
@@ -1201,10 +1225,15 @@ function activate(v) {
   labels = v.labels; labelRects = v.labelRects;
 }
 
-/* ---------- lighting ---------- */
-const LX = -0.36, LY = 0.50, LZ = 0.79;            // key light, in view space
+/* ---------- lighting ----------
+   A two-light rig in view space, so the illumination tracks the camera the way
+   a microscope lamp does. The fill light keeps the shadow side from going flat
+   black, which is most of what separates a solid from a silhouette. */
+const LX = -0.36, LY = 0.52, LZ = 0.77;            // key
+const FX =  0.66, FY = -0.16, FZ = 0.73;           // fill, opposite side and below
+const KEY_I = 0.74, FILL_I = 0.30;
 const HX = -0.22, HY = 0.30, HZ = 0.93;            // halfway vector for sheen
-const RIM = [86, 62, 138];                          // cool violet rim
+const RIM = [124, 66, 104];                         // warm rim, reads as translucent tissue
 
 const _v = [];
 for (let i = 0; i < 16; i++) _v.push(new Float32Array(3));
@@ -1256,10 +1285,12 @@ function emitView(m, base, o) {
     }
   }
 
-  const diff = Math.max(0, nx * LX + ny * LY + nz * LZ);
+  const diff = KEY_I * Math.max(0, nx * LX + ny * LY + nz * LZ)
+             + FILL_I * Math.max(0, nx * FX + ny * FY + nz * FZ);
+  const ao   = 0.84 + 0.16 * (ny * 0.5 + 0.5);      // crude sky occlusion: undersides sit back
   const rimf = Math.pow(1 - Math.min(1, nz), 3) * (o.rim === undefined ? 0.55 : o.rim);
-  const sp   = Math.pow(Math.max(0, nx * HX + ny * HY + nz * HZ), 30) * (o.gloss === undefined ? 0.38 : o.gloss);
-  const k    = (o.amb === undefined ? 0.27 : o.amb) + 0.80 * diff;
+  const sp   = Math.pow(Math.max(0, nx * HX + ny * HY + nz * HZ), 34) * (o.gloss === undefined ? 0.38 : o.gloss);
+  const k    = ((o.amb === undefined ? 0.24 : o.amb) + diff) * ao;
   const em   = o.glow || 0;
 
   const r = clamp(base[0] * k + RIM[0] * rimf + 255 * sp + base[0] * em, 0, 255) | 0;
@@ -2121,36 +2152,101 @@ function muscleAnchor(m) {
 }
 
 /* ==========================================================================
-   The figure — a clickable ecorche. Faces carry a region id, so a click is
-   hit-tested against the real geometry rather than an invisible hotspot map.
+   The figure — an ecorche. The superficial muscle groups are modelled as real
+   bellies laid over a deep core, so hovering and clicking land on the muscle
+   you are actually pointing at rather than on a hotspot drawn over a mannequin.
    ========================================================================== */
-const SKIN     = [168, 116, 122];
-const SKIN_HOV = [206, 122, 132];
-const SKIN_SEL = [234, 104, 122];
+const CORE_C   = [150, 100, 104];
+const SKIN_C   = [176, 132, 130];
+const MUS_C    = [196, 100, 104];
+const MUS_HOV  = [220, 122, 120];
+const MUS_SEL  = [242, 106, 122];
+const APO_C    = [214, 204, 192];
 
 const torsoPath = t => [0, -0.34 + t * 2.84, 0];
-const torsoProf = t => ramp(t, [[0, 0.44], [0.14, 0.50], [0.34, 0.385],
-                                [0.52, 0.425], [0.80, 0.50], [0.94, 0.47], [1, 0.40]]);
+const torsoProf = t => ramp(t, [[0, 0.40], [0.14, 0.455], [0.34, 0.345],
+                                [0.52, 0.385], [0.80, 0.455], [0.94, 0.425], [1, 0.36]]);
+
+/* Superficial muscle groups, left side only — `both` mirrors them across the
+   midline. Coordinates are hand-placed on the core form. */
+const BODY_MUSCLES = [
+  /* chest */
+  { rg: 'chest', both: true, w: 0.150, bow: [-0.06, 0.03, 0.12],
+    origins: [[-0.07, 2.30, 0.30], [-0.07, 2.06, 0.35], [-0.08, 1.82, 0.36], [-0.09, 1.58, 0.34]],
+    insert: [-0.56, 2.16, 0.12] },
+
+  /* abdominal wall — four segments a side, separated by tendinous intersections */
+  { rg: 'abdomen', both: true, w: 0.108, tendon: [0.12, 0.88], from: [-0.155, 1.50, 0.355], to: [-0.155, 1.22, 0.360] },
+  { rg: 'abdomen', both: true, w: 0.112, tendon: [0.12, 0.88], from: [-0.155, 1.19, 0.358], to: [-0.155, 0.92, 0.345] },
+  { rg: 'abdomen', both: true, w: 0.108, tendon: [0.12, 0.88], from: [-0.155, 0.89, 0.342], to: [-0.155, 0.64, 0.330] },
+  { rg: 'abdomen', both: true, w: 0.100, tendon: [0.12, 0.88], from: [-0.155, 0.61, 0.328], to: [-0.165, 0.30, 0.300] },
+  { rg: 'abdomen', both: true, w: 0.108, bow: [-0.05, 0, 0.05],
+    origins: [[-0.42, 1.48, 0.18], [-0.48, 1.24, 0.22], [-0.50, 0.98, 0.24]],
+    insert: [-0.24, 0.44, 0.30] },
+
+  /* back */
+  { rg: 'back', both: true, w: 0.128, bow: [-0.04, 0.04, -0.07],
+    origins: [[-0.03, 2.58, -0.20], [-0.04, 2.26, -0.26], [-0.05, 1.88, -0.29], [-0.06, 1.50, -0.29]],
+    insert: [-0.48, 2.32, -0.14], insert2: [-0.30, 2.04, -0.28] },
+  { rg: 'back', both: true, w: 0.126, bow: [-0.11, 0.06, -0.07],
+    origins: [[-0.13, 1.08, -0.30], [-0.26, 0.70, -0.28], [-0.37, 0.34, -0.23]],
+    insert: [-0.52, 2.10, -0.08] },
+  { rg: 'back', both: true, w: 0.098, tendon: [0.05, 0.95], from: [-0.115, 2.36, -0.31], to: [-0.115, 0.12, -0.32] },
+
+  /* neck */
+  { rg: 'neck', both: true, w: 0.072, bow: [-0.03, 0, 0.05], from: [-0.17, 2.92, -0.10], to: [-0.05, 2.42, 0.26] },
+
+  /* shoulder and upper arm */
+  { rg: 'arm', both: true, w: 0.138, bow: [-0.11, 0.04, 0.02],
+    origins: [[-0.32, 2.46, 0.16], [-0.52, 2.52, 0.00], [-0.42, 2.44, -0.18]],
+    insert: [-0.70, 1.88, 0.02] },
+  { rg: 'arm', both: true, w: 0.108, bow: [-0.02, 0, 0.06], from: [-0.62, 2.20, 0.08], to: [-0.86, 1.22, 0.09] },
+  { rg: 'arm', both: true, w: 0.102, bow: [-0.02, 0, -0.06], from: [-0.62, 2.18, -0.08], to: [-0.88, 1.18, -0.05] },
+
+  /* forearm */
+  { rg: 'forearm', both: true, w: 0.086, bow: [-0.02, 0, 0.04], from: [-0.88, 1.10, 0.06], to: [-1.00, 0.10, 0.10] },
+  { rg: 'forearm', both: true, w: 0.076, bow: [-0.02, 0, -0.04], from: [-0.90, 1.08, -0.05], to: [-1.02, 0.12, 0.01] },
+
+  /* hip and thigh */
+  { rg: 'thigh', both: true, w: 0.178, bow: [-0.05, 0.02, -0.09],
+    origins: [[-0.09, 0.28, -0.30], [-0.28, 0.10, -0.29]], insert: [-0.30, -0.58, -0.20] },
+  { rg: 'thigh', both: true, w: 0.140, bow: [0, 0, 0.06], tendon: [0.06, 0.86], from: [-0.24, -0.30, 0.20], to: [-0.33, -1.70, 0.13] },
+  { rg: 'thigh', both: true, w: 0.130, bow: [-0.07, 0, 0.03], tendon: [0.06, 0.86], from: [-0.41, -0.52, 0.05], to: [-0.40, -1.70, 0.10] },
+  { rg: 'thigh', both: true, w: 0.115, bow: [0.06, 0, 0.03], tendon: [0.06, 0.86], from: [-0.11, -0.98, 0.10], to: [-0.27, -1.70, 0.13] },
+  { rg: 'thigh', both: true, w: 0.138, bow: [0, 0, -0.07], tendon: [0.06, 0.88], from: [-0.24, -0.32, -0.18], to: [-0.33, -1.72, -0.12] },
+
+  /* leg and foot */
+  { rg: 'leg', both: true, w: 0.120, tendon: [0.10, 0.58], bow: [0, 0.02, -0.07],
+    origins: [[-0.27, -1.82, -0.11], [-0.40, -1.82, -0.11]], insert: [-0.35, -2.86, -0.10] },
+  { rg: 'leg', both: true, w: 0.070, bow: [0, 0, 0.05], tendon: [0.08, 0.72], from: [-0.29, -1.94, 0.09], to: [-0.36, -2.84, 0.08] }
+];
 
 function buildBody(T, S) {
-  const tone = pick => (S.sel === pick) ? { c: SKIN_SEL, g: 0.26 }
-             : (S.hover === pick) ? { c: SKIN_HOV, g: 0.15 }
-             : { c: SKIN, g: 0 };
+  const breath = S.breathe ? 0.5 - 0.5 * Math.cos(T * 1.45) : 0.30;
+  const tone = rg => (S.sel === rg) ? { c: MUS_SEL, g: 0.24 }
+             : (S.hover === rg) ? { c: MUS_HOV, g: 0.13 }
+             : { c: MUS_C, g: 0 };
+
+  /* the thorax lifts and widens with each breath */
+  const chestW = t => ramp(t, [[0.42, 0], [0.62, 0.7], [0.88, 1], [1, 0.6]]);
+  const prof = t => torsoProf(t) * (1 + 0.030 * breath * chestW(t));
+  const path = t => [0, -0.34 + t * 2.84 + 0.022 * breath * chestW(t), 0];
 
   const ghost = S.viscera;
-  const seg = (t0, t1, a0, a1, pick, front) => {
+  const PI = Math.PI;
+
+  const seg = (t0, t1, a0, a1, rg, front) => {
     const ts = [];
-    for (let i = 0; i <= 9; i++) ts.push(t0 + (t1 - t0) * i / 9);
-    const tn = tone(pick);
+    for (let i = 0; i <= 7; i++) ts.push(t0 + (t1 - t0) * i / 7);
+    const tn = tone(rg);
     const see = ghost && front;
     tube({
-      path: torsoPath, radius: torsoProf, ts, radial: 13, a0, a1, oval: 0.24,
-      color: tn.c, glow: see ? 0 : tn.g, pick: see ? null : pick,
-      alpha: see ? 0.26 : 1,
-      gloss: 0.28, rim: see ? 0.9 : 0.5, amb: see ? 0.5 : 0.26
+      path, radius: prof, ts, radial: 11, a0, a1, oval: 0.26,
+      color: see ? [150, 104, 110] : CORE_C, glow: see ? 0 : tn.g * 0.5,
+      pick: see ? null : rg, alpha: see ? 0.26 : 1,
+      gloss: 0.22, rim: see ? 0.9 : 0.45, amb: see ? 0.5 : 0.22
     });
   };
-  const PI = Math.PI;
   seg(0.00, 0.22, 0, PI, 'thigh', false);
   seg(0.00, 0.22, PI, TAU, 'thigh', false);
   seg(0.22, 0.52, 0, PI, 'abdomen', true);
@@ -2158,52 +2254,78 @@ function buildBody(T, S) {
   seg(0.52, 1.00, 0, PI, 'chest', true);
   seg(0.52, 1.00, PI, TAU, 'back', false);
 
-  const limb = (from, to, r0, r1, pick, bow) => {
-    const tn = tone(pick);
+  /* deep core of each limb — the muscles are laid on top of these */
+  const core = (from, to, r0, r1, rg, bow) => {
+    const tn = tone(rg);
     tube({
       path: bez(from, to, bow), radius: t => r0 + (r1 - r0) * t,
-      segs: 8, radial: 10, color: tn.c, glow: tn.g, pick,
-      gloss: 0.28, rim: 0.5, amb: 0.26
+      segs: 6, radial: 9, color: CORE_C, glow: tn.g * 0.5, pick: rg,
+      gloss: 0.22, rim: 0.45, amb: 0.22
     });
   };
+  const skin = (c, rx, ry, rz, rg, sl, st) => {
+    const tn = tone(rg);
+    ellipsoid(c, rx, ry, rz, SKIN_C,
+      { glow: tn.g * 0.6, pick: rg, gloss: 0.3, rim: 0.5, amb: 0.28 }, sl || 11, st || 7);
+  };
 
-  const hn = tone('neck');
-  ellipsoid([0, 3.06, 0.02], 0.33, 0.42, 0.35, hn.c,
-    { glow: hn.g, pick: 'neck', gloss: 0.3, rim: 0.5, amb: 0.26 }, 12, 8);
-  limb([0, 2.44, 0], [0, 2.76, 0.01], 0.16, 0.15, 'neck');
+  skin([0, 3.08, 0.03], 0.315, 0.40, 0.335, 'neck', 13, 9);
+  skin([0, 2.86, 0.16], 0.20, 0.17, 0.19, 'neck', 9, 6);
+  core([0, 2.42, 0], [0, 2.78, 0.01], 0.145, 0.135, 'neck');
 
   [-1, 1].forEach(s => {
-    const sh = tone('arm');
-    ellipsoid([s * 0.60, 2.30, 0], 0.24, 0.26, 0.23, sh.c,
-      { glow: sh.g, pick: 'arm', gloss: 0.28, rim: 0.5, amb: 0.26 }, 11, 7);
-    limb([s * 0.66, 2.28, 0], [s * 0.90, 1.12, 0.02], 0.185, 0.125, 'arm', [s * 0.06, 0, 0.03]);
-    limb([s * 0.90, 1.10, 0.02], [s * 1.02, -0.04, 0.07], 0.125, 0.082, 'forearm', [s * 0.05, 0, 0.07]);
-    limb([s * 1.02, -0.06, 0.07], [s * 1.07, -0.46, 0.09], 0.082, 0.052, 'forearm');
-    limb([s * 0.24, -0.28, 0], [s * 0.33, -1.82, 0.01], 0.265, 0.155, 'thigh', [s * 0.04, 0, 0.04]);
-    limb([s * 0.33, -1.84, 0.01], [s * 0.35, -3.00, 0.02], 0.155, 0.088, 'leg', [s * 0.015, 0, -0.05]);
-    limb([s * 0.35, -3.04, -0.03], [s * 0.36, -3.19, 0.34], 0.088, 0.10, 'leg');
+    core([s * 0.66, 2.28, 0], [s * 0.90, 1.12, 0.02], 0.118, 0.078, 'arm', [s * 0.06, 0, 0.03]);
+    core([s * 0.90, 1.10, 0.02], [s * 1.02, -0.04, 0.07], 0.078, 0.054, 'forearm', [s * 0.05, 0, 0.07]);
+    skin([s * 1.06, -0.28, 0.09], 0.062, 0.155, 0.045, 'forearm', 9, 6);
+    core([s * 0.24, -0.28, 0], [s * 0.33, -1.82, 0.01], 0.180, 0.100, 'thigh', [s * 0.04, 0, 0.04]);
+    core([s * 0.33, -1.84, 0.01], [s * 0.35, -3.00, 0.02], 0.100, 0.060, 'leg', [s * 0.015, 0, -0.05]);
+    skin([s * 0.36, -3.12, 0.14], 0.075, 0.075, 0.26, 'leg', 9, 6);
+  });
+
+  /* the superficial layer */
+  BODY_MUSCLES.forEach(m => {
+    const tn = tone(m.rg);
+    const o = {
+      from: m.from, to: m.to, bow: m.bow, w: m.w, tendon: m.tendon,
+      origins: m.origins, insert: m.insert, insert2: m.insert2,
+      color: tn.c, pick: m.rg, glow: tn.g, segs: 8, radial: 6
+    };
+    const draw = x => { if (x.origins) muscleFan(x); else muscleBelly(x); };
+    draw(o);
+    if (m.both) {
+      const mo = Object.assign({}, o);
+      if (m.origins) {
+        mo.origins = m.origins.map(mir);
+        mo.insert = mir(m.insert);
+        if (m.insert2) mo.insert2 = mir(m.insert2);
+      } else { mo.from = mir(m.from); mo.to = mir(m.to); }
+      if (m.bow) mo.bow = [-m.bow[0], m.bow[1], m.bow[2]];
+      draw(mo);
+    }
   });
 
   if (ghost) {
     const ht = tone('heart');
-    ellipsoid([-0.13, 1.92, 0.10], 0.21, 0.25, 0.20,
-      (S.sel === 'heart' || S.hover === 'heart') ? [232, 96, 76] : [198, 82, 66],
-      { glow: ht.g + 0.12, pick: 'heart', gloss: 0.45, rim: 0.5, amb: 0.32 }, 11, 7);
-    ellipsoid([-0.13, 2.16, 0.02], 0.17, 0.11, 0.16, [176, 78, 70],
+    const hb = 1 - 0.05 * (0.5 - 0.5 * Math.cos(T * 5.6));
+    ellipsoid([-0.13, 1.92, 0.10], 0.21 * hb, 0.25 * hb, 0.20 * hb,
+      (S.sel === 'heart' || S.hover === 'heart') ? [236, 98, 78] : [202, 84, 66],
+      { glow: ht.g + 0.14, pick: 'heart', gloss: 0.45, rim: 0.5, amb: 0.32 }, 12, 8);
+    ellipsoid([-0.13, 2.16, 0.02], 0.17, 0.11, 0.16, [178, 78, 70],
       { glow: 0.05, pick: 'heart', gloss: 0.4, rim: 0.5, amb: 0.3 }, 9, 6);
     const gt = tone('gut');
-    const gpath = t => {
-      const a = t * TAU * 2.1;
-      return [Math.sin(a) * 0.26, 1.20 - t * 0.62, 0.10 + Math.cos(a) * 0.17];
-    };
     tube({
-      path: gpath, radius: () => 0.088, segs: 44, radial: 8,
-      color: (S.sel === 'gut' || S.hover === 'gut') ? [222, 168, 140] : [190, 142, 118],
+      path: t => {
+        const a = t * TAU * 2.1;
+        return [Math.sin(a) * 0.24, 1.18 - t * 0.60, 0.08 + Math.cos(a) * 0.16];
+      },
+      radius: () => 0.082, segs: 46, radial: 8,
+      color: (S.sel === 'gut' || S.hover === 'gut') ? [224, 170, 142] : [192, 144, 120],
       glow: gt.g, pick: 'gut', gloss: 0.35, rim: 0.5, amb: 0.30
     });
   }
 
-  return [['Figure', 'anterior'], ['Regions', String(REGION_ORDER.length)]];
+  return S.breathe ? [[breath > 0.5 ? 'inhaling' : 'exhaling', '']]
+                   : [[ghost ? 'viscera' : 'ecorche', '']];
 }
 
 /* ==========================================================================
@@ -2356,7 +2478,7 @@ const REGIONS = {
   back: {
     name: 'Back', short: 'Back', tissue: 'skeletal',
     lede: 'Two great superficial sheets — trapezius above, latissimus dorsi below — move the shoulder. Underneath them the erector spinae runs the length of the column and holds you upright without being asked.',
-    cam: { yaw: 3.30, pitch: 0.14, dist: 6.4 },
+    bodyYaw: 3.44, cam: { yaw: 3.30, pitch: 0.14, dist: 6.4 },
     bones: (function () {
       const b = [{ from: [0, 2.62, -0.34], to: [0, -1.34, -0.28], r: 0.10, segs: 18 }];
       for (let i = 0; i < 12; i++) {
@@ -2431,7 +2553,7 @@ const REGIONS = {
   thigh: {
     name: 'Hip & thigh', short: 'Hip & thigh', tissue: 'skeletal',
     lede: 'The biggest muscles in the body, arranged front and back. Quadriceps femoris extends the knee through a single tendon that swallows the patella; the hamstrings do the opposite.',
-    cam: { yaw: 0.92, pitch: 0.07, dist: 6.2 },
+    bodyYaw: 0.34, cam: { yaw: 0.92, pitch: 0.07, dist: 6.2 },
     bones: [
       { from: [-0.55, 2.14, 0.02], to: [0.68, 2.06, -0.14], r: 0.14, bow: [0, 0.16, -0.06] },
       { from: [0.16, 2.40, -0.46], to: [0.16, 1.58, -0.40], r: 0.10 },
@@ -2465,7 +2587,7 @@ const REGIONS = {
   leg: {
     name: 'Leg & foot', short: 'Leg & foot', tissue: 'skeletal',
     lede: 'Gastrocnemius and soleus share the Achilles tendon, the thickest in the body. Soleus is nearly all slow oxidative fibre — it holds you standing all day without tiring.',
-    cam: { yaw: 0.80, pitch: 0.06, dist: 5.6 },
+    bodyYaw: 0.34, cam: { yaw: 0.80, pitch: 0.06, dist: 5.6 },
     bones: (function () {
       const b = [
         { from: [0, 2.16, 0], to: [0.02, 1.30, 0], r: 0.115 },
@@ -2498,7 +2620,7 @@ const REGIONS = {
   heart: {
     name: 'Heart', short: 'Heart — cardiac', tissue: 'cardiac',
     lede: 'The ventricular myocardium is not a bag of muscle but a helical band, wound so that contraction wrings blood upward rather than merely squeezing inward. Built of branched, striated, involuntary cardiac muscle.',
-    cam: { yaw: 0.46, pitch: 0.16, dist: 5.0 },
+    bodyYaw: 0.12, cam: { yaw: 0.46, pitch: 0.16, dist: 5.0 },
     anim: true,
     custom: true,
     features: [
@@ -2513,7 +2635,7 @@ const REGIONS = {
   gut: {
     name: 'Gut wall', short: 'Gut — smooth', tissue: 'smooth',
     lede: 'Two smooth muscle coats at right angles: an inner circular layer that narrows the lumen and an outer longitudinal layer that shortens the tube. Between them sits the nerve plexus that sets the rhythm.',
-    cam: { yaw: 0.40, pitch: 0.26, dist: 5.9 },
+    bodyYaw: 0.12, cam: { yaw: 0.40, pitch: 0.26, dist: 5.9 },
     anim: true,
     custom: true,
     features: [
@@ -2732,7 +2854,7 @@ Object.keys(SCENES).forEach(k => {
 let cur = 'skeletal';
 let curRegion = 'arm';
 
-const bodyState   = { sel: 'arm', hover: null, viscera: false, labels: false, anim: false };
+const bodyState   = { sel: 'arm', hover: null, viscera: false, labels: false, breathe: !reduced };
 const regionState = { sel: null, labels: true, anim: !reduced, contract: 0.35 };
 
 const $ = id => document.getElementById(id);
@@ -2778,14 +2900,15 @@ V.specimen = makeView({
 });
 
 V.body = makeView({
-  id: 'body', canvas: 'bodyStage', host: 'bodyField', basis: 'h',
+  id: 'body', canvas: 'bodyStage', host: 'bodyField', basis: 'h', metrics: 'bodyMetrics',
   cam: { yaw: 0.30, pitch: 0.06, dist: 7.5 },
   build: T => buildBody(T, bodyState),
-  animating: () => false,
+  animating: () => bodyState.breathe,
   labelsOn: () => false,
   hue: () => '#E2687C',
   pickable: true,
-  onHover: pick => {
+  onHover: (pick, e) => {
+    showTip(pick, e);
     if (bodyState.hover === pick) return;
     bodyState.hover = pick;
     V.body.canvas.style.cursor = pick ? 'pointer' : 'grab';
@@ -2896,10 +3019,24 @@ function buildReadout() {
   sc.features.forEach(f => elFeatures.appendChild(featureRow(f, elFeatures, S, V.specimen)));
 }
 
-function resetCam(v) {
-  Object.assign(v.cam, camDefaults[v.id]);
+/* Camera moves are eased rather than cut, so switching regions reads as the
+   specimen turning toward you instead of a jump. */
+function shortestYaw(from, to) {
+  let d = (to - from) % TAU;
+  if (d > Math.PI) d -= TAU;
+  if (d < -Math.PI) d += TAU;
+  return from + d;
+}
+function tweenCam(v, target, ms) {
+  if (reduced) { Object.assign(v.cam, target); v.dirty = true; return; }
+  v.tween = {
+    from: { yaw: v.cam.yaw, pitch: v.cam.pitch, dist: v.cam.dist },
+    to: { yaw: shortestYaw(v.cam.yaw, target.yaw), pitch: target.pitch, dist: target.dist },
+    t0: performance.now(), ms: ms || 620
+  };
   v.dirty = true;
 }
+function resetCam(v) { tweenCam(v, camDefaults[v.id]); }
 
 function selectScene(key) {
   cur = key;
@@ -2957,6 +3094,14 @@ function buildBodyControls() {
     buildBodyControls();
     V.body.dirty = true;
   }));
+  elBodyControls.appendChild(ctlButton('Breathe', bodyState.breathe, () => {
+    bodyState.breathe = !bodyState.breathe;
+    buildBodyControls();
+    V.body.dirty = true;
+  }));
+  elBodyControls.appendChild(ctlButton('Turn', null, () => {
+    tweenCam(V.body, { yaw: V.body.cam.yaw + Math.PI, pitch: V.body.cam.pitch, dist: V.body.cam.dist }, 700);
+  }));
   elBodyControls.appendChild(ctlButton('Reset', null, () => resetCam(V.body)));
 }
 
@@ -3007,7 +3152,21 @@ function selectRegion(key) {
   camDefaults.region = Object.assign({ fov: 1.02 }, R.cam);
   resetCam(V.region);
   buildRegionControls();
+  /* turn the figure so the chosen region faces the viewer */
+  tweenCam(V.body, { yaw: R.bodyYaw === undefined ? 0.30 : R.bodyYaw,
+                     pitch: 0.06, dist: V.body.cam.dist });
   V.body.dirty = true;
+}
+
+const elTip = $('bodyTip');
+function showTip(pick, e) {
+  if (!pick || !e || !REGIONS[pick]) { elTip.hidden = true; return; }
+  const r = V.body.canvas.getBoundingClientRect();
+  elTip.textContent = REGIONS[pick].short;
+  elTip.hidden = false;
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  elTip.style.left = clamp(x + 12, 4, Math.max(4, r.width - elTip.offsetWidth - 4)) + 'px';
+  elTip.style.top = clamp(y - 26, 4, Math.max(4, r.height - 26)) + 'px';
 }
 
 /* ---------- pointer, shared by every view ---------- */
@@ -3031,7 +3190,7 @@ function attachPointer(v) {
 
   cv.addEventListener('pointermove', e => {
     if (!pointers.has(e.pointerId)) {
-      if (v.pickable && v.onHover && !dragging) v.onHover(pickAt(v, e));
+      if (v.pickable && v.onHover && !dragging) v.onHover(pickAt(v, e), e);
       return;
     }
     pointers.set(e.pointerId, [e.clientX, e.clientY]);
@@ -3045,6 +3204,7 @@ function attachPointer(v) {
     const dx = e.clientX - lastX, dy = e.clientY - lastY;
     lastX = e.clientX; lastY = e.clientY;
     moved += Math.abs(dx) + Math.abs(dy);
+    v.tween = null;
     v.cam.yaw += dx * 0.0072;
     v.cam.pitch = clamp(v.cam.pitch + dy * 0.0062, -1.35, 1.35);
     v.dirty = true;
@@ -3060,7 +3220,7 @@ function attachPointer(v) {
   });
   cv.addEventListener('pointercancel', end);
   cv.addEventListener('lostpointercapture', end);
-  cv.addEventListener('pointerleave', () => { if (v.onHover) v.onHover(null); });
+  cv.addEventListener('pointerleave', () => { if (v.onHover) v.onHover(null, null); });
 
   cv.addEventListener('wheel', e => {
     e.preventDefault();
@@ -3136,6 +3296,19 @@ function resizeView(v) {
 }
 views.forEach(v => new ResizeObserver(() => resizeView(v)).observe(v.host || v.canvas));
 
+/* Only draw what is actually on screen. Without this, the breathing figure
+   would keep rendering while the reader is three sections away looking at a
+   specimen, and both animations would compete for the same frame budget. */
+views.forEach(v => {
+  v.visible = true;
+  if (!('IntersectionObserver' in window)) return;
+  new IntersectionObserver(es => {
+    const vis = es[0].isIntersecting;
+    if (vis && !v.visible) v.dirty = true;
+    v.visible = vis;
+  }, { rootMargin: '150px' }).observe(v.host || v.canvas);
+});
+
 /* ---------- background: the illuminated field ---------- */
 function drawField() {
   const g = ctx.createRadialGradient(W * 0.46, H * 0.44, 10, W * 0.5, H * 0.5, Math.max(W, H) * 0.78);
@@ -3203,6 +3376,15 @@ function drawLabels(hue, sel) {
 const t0 = performance.now();
 function renderView(v, now) {
   activate(v);
+  if (v.tween) {
+    const tw = v.tween;
+    const u = clamp((now - tw.t0) / tw.ms, 0, 1);
+    const e = u * u * (3 - 2 * u);
+    v.cam.yaw = tw.from.yaw + (tw.to.yaw - tw.from.yaw) * e;
+    v.cam.pitch = tw.from.pitch + (tw.to.pitch - tw.from.pitch) * e;
+    v.cam.dist = tw.from.dist + (tw.to.dist - tw.from.dist) * e;
+    if (u >= 1) v.tween = null; else v.dirty = true;
+  }
   const T = (now - t0) / 1000;
   camSync();
   FOCAL = cam.fov * (v.basis === 'h' ? H : Math.min(W, H)) * (W < 560 && v.basis !== 'h' ? 0.66 : 0.86);
@@ -3257,7 +3439,8 @@ function renderView(v, now) {
 function frame(now) {
   for (let i = 0; i < views.length; i++) {
     const v = views[i];
-    if (v.dirty || v.animating()) { v.dirty = false; renderView(v, now); }
+    if (!v.visible) continue;
+    if (v.dirty || v.tween || v.animating()) { v.dirty = false; renderView(v, now); }
   }
   requestAnimationFrame(frame);
 }
