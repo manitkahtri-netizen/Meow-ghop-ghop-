@@ -34,16 +34,20 @@ over a deep core, so hovering names the muscle you are actually pointing at.
 It breathes: the thorax lifts and widens at about thirteen breaths a minute,
 which is also the diaphragm's own entry in the chest region.
 
-Ten regions — head and neck, chest, shoulder and arm, forearm and hand, back,
-abdominal wall, hip and thigh, leg and foot, plus the heart and the gut wall.
+Eleven regions — head and neck, chest, shoulder and arm, forearm and hand,
+back, abdominal wall, hip and thigh, leg and foot, plus the heart, the lungs
+and the gut wall.
 Each opens its own diagram with the bones in place, the muscles named, and what
-each one actually does. Switch on **Viscera** and the body wall turns to glass,
-putting the heart and the gut coil in reach.
+each one actually does. Switch on **Viscera** and the anterior trunk
+wall turns to glass, putting the heart, the lungs and the gut coil in reach.
 
-The two visceral regions are the point of the section: the heart is branched
-striated cardiac muscle wound as a helical band, the gut wall is two smooth
-muscle coats at right angles, and each region links straight back to its tissue
-specimen at the top of the page.
+The three visceral regions are the point of the section. The heart is branched
+striated cardiac muscle wound as a helical band. The gut wall is two smooth
+muscle coats at right angles. The lungs hold no muscle of their own at all —
+spiral smooth muscle in the bronchial wall sets airway calibre, and skeletal
+muscle in the diaphragm does the pumping, so both tissue types appear in one
+model. Drag **Constrict** there to close the airways the way asthma does.
+Each region links straight back to its tissue specimen at the top of the page.
 
 Regions are also listed as buttons beside the figure, so nothing depends on
 hitting a narrow limb with a mouse.

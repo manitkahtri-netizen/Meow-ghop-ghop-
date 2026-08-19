@@ -1195,8 +1195,9 @@ function camSync() {
   CP = Math.cos(cam.pitch); SP = Math.sin(cam.pitch);
 }
 
+let TY = 0;   /* camera target height — lets a model sit off the origin and still frame */
 function viewPt(p, out) {
-  const x0 = p[0], y0 = p[1], z0 = p[2];
+  const x0 = p[0], y0 = p[1] - TY, z0 = p[2];
   const x = x0 * CY - z0 * SY;
   const z1 = x0 * SY + z0 * CY;
   out[0] = x;
@@ -1366,6 +1367,7 @@ function tube(o) {
   const dA = (a1 - a0) / nA;
   const twist = o.twist || 0;
   const oval = o.oval || 0;
+  const amod = o.amod || null;      /* per-angle radius, for non-round cross-sections */
   const radFn = typeof o.radius === 'function' ? o.radius : () => o.radius;
   const colFn = typeof o.color === 'function' ? o.color : () => o.color;
   const ts = o.ts || (function () { const n = o.segs || 12, out = []; for (let i = 0; i <= n; i++) out.push(i / n); return out; })();
@@ -1381,7 +1383,7 @@ function tube(o) {
     for (let j = 0; j < cnt; j++) {
       const a = a0 + j * dA + twist * t;
       const ca = Math.cos(a), sa = Math.sin(a);
-      const rr = r * (1 + oval * Math.cos(2 * a));
+      const rr = r * (1 + oval * Math.cos(2 * a)) * (amod ? amod(a, t) : 1);
       const v = cur[j];
       v[0] = P[0] + _N[0] * ca * rr + _B[0] * sa * rr;
       v[1] = P[1] + _N[1] * ca * rr + _B[1] * sa * rr;
@@ -2285,10 +2287,14 @@ function buildBody(T, S) {
   /* the superficial layer */
   BODY_MUSCLES.forEach(m => {
     const tn = tone(m.rg);
+    /* in x-ray mode the anterior trunk wall goes translucent and stops taking
+       clicks, so the organs behind it are both visible and reachable */
+    const xray = ghost && (m.rg === 'chest' || m.rg === 'abdomen');
     const o = {
       from: m.from, to: m.to, bow: m.bow, w: m.w, tendon: m.tendon,
       origins: m.origins, insert: m.insert, insert2: m.insert2,
-      color: tn.c, pick: m.rg, glow: tn.g, segs: 8, radial: 6
+      color: tn.c, pick: xray ? null : m.rg, glow: xray ? 0 : tn.g,
+      alpha: xray ? 0.24 : undefined, segs: 8, radial: 6
     };
     const draw = x => { if (x.origins) muscleFan(x); else muscleBelly(x); };
     draw(o);
@@ -2312,6 +2318,17 @@ function buildBody(T, S) {
       { glow: ht.g + 0.14, pick: 'heart', gloss: 0.45, rim: 0.5, amb: 0.32 }, 12, 8);
     ellipsoid([-0.13, 2.16, 0.02], 0.17, 0.11, 0.16, [178, 78, 70],
       { glow: 0.05, pick: 'heart', gloss: 0.4, rim: 0.5, amb: 0.3 }, 9, 6);
+    const lu = tone('lungs');
+    [-1, 1].forEach(sd => {
+      tube({
+        path: bez([sd * 0.13, 2.38, 0.02], [sd * 0.30, 1.52, -0.02], [sd * 0.07, 0, 0.03]),
+        radius: t => (0.055 + 0.225 * Math.pow(t, 0.60)) * (1 + 0.055 * breath),
+        segs: 9, radial: 13, oval: 0.06,
+        color: (S.sel === 'lungs' || S.hover === 'lungs') ? [252, 184, 188] : [242, 164, 168],
+        alpha: 0.52, dbl: true, gloss: 0.4, rim: 0.9, amb: 0.52,
+        pick: 'lungs', glow: lu.g
+      });
+    });
     const gt = tone('gut');
     tube({
       path: t => {
@@ -2331,7 +2348,7 @@ function buildBody(T, S) {
 /* ==========================================================================
    Regions — what opens when you click a part of the figure
    ========================================================================== */
-const REGION_ORDER = ['neck', 'chest', 'arm', 'forearm', 'back', 'abdomen', 'thigh', 'leg', 'heart', 'gut'];
+const REGION_ORDER = ['neck', 'chest', 'arm', 'forearm', 'back', 'abdomen', 'thigh', 'leg', 'heart', 'lungs', 'gut'];
 
 const REGIONS = {
 
@@ -2617,6 +2634,24 @@ const REGIONS = {
     ]
   },
 
+  lungs: {
+    name: 'Lungs & airways', short: 'Lungs — smooth', tissue: 'smooth',
+    lede: 'No muscle moves air. The lungs are passive bags; skeletal muscle pumps them and smooth muscle decides how easily air gets in. Spiral bands of smooth muscle in the bronchial wall set the calibre of every airway below the cartilage.',
+    bodyYaw: 0.12, cam: { yaw: 0.34, pitch: 0.10, dist: 6.2, ty: 0.95 },
+    anim: true, animLabel: 'Breathe', sliderLabel: 'Constrict', sliderAlways: true,
+    custom: true,
+    features: [
+      { k: 'asm', term: 'Airway smooth muscle', d: 'Spiral bands running through the bronchial wall. Below the cartilage there is nothing else holding the airway open, so this muscle alone sets resistance — and in asthma its spasm and hypertrophy are the disease. Drag Constrict to watch the calibre fall.' },
+      { k: 'trachea', term: 'Trachea', d: 'About 12 cm from larynx to carina, held open by cartilage and lined with ciliated respiratory epithelium.' },
+      { k: 'cartilage', term: 'Cartilage rings', d: 'Roughly twenty C-shaped rings, open at the back so the oesophagus can bulge into the gap as a swallow passes. The trachealis — smooth muscle — bridges the opening.' },
+      { k: 'bronchus', term: 'Main bronchi', d: 'The right is wider, shorter and more vertical than the left, so an inhaled object almost always lands in the right lung.' },
+      { k: 'bronchiole', term: 'Bronchioles', d: 'Under 1 mm across, and past this point there is no cartilage at all. The wall is smooth muscle and elastic tissue, which is why calibre here is so changeable.' },
+      { k: 'alveoli', term: 'Alveoli', d: 'Around 300 million of them, giving a gas-exchange surface near 70 m². They contain no muscle whatever — they are elastic sacs, and recoil is what empties them.' },
+      { k: 'lobes', term: 'Lobes and fissures', d: 'Three lobes on the right, two on the left. The left gives up a lobe to the heart and carries a cardiac notch in its front border — visible in the model as the scoop on the near side.' },
+      { k: 'diaphragm', term: 'Diaphragm', d: 'The pump, and skeletal muscle: fibres radiating from a central tendon. When they shorten the dome flattens, the thorax enlarges and air follows the pressure drop. Quiet expiration needs no muscle at all — it is elastic recoil.' }
+    ]
+  },
+
   heart: {
     name: 'Heart', short: 'Heart — cardiac', tissue: 'cardiac',
     lede: 'The ventricular myocardium is not a bag of muscle but a helical band, wound so that contraction wrings blood upward rather than merely squeezing inward. Built of branched, striated, involuntary cardiac muscle.',
@@ -2825,10 +2860,166 @@ function buildGut(T, S) {
           ['Control', 'involuntary']];
 }
 
+/* --------------------------------------------------------------------------
+   Lungs & airways. The muscle here is smooth: spiral bands in the bronchial
+   wall that set airway calibre. The pump driving it is skeletal — the
+   diaphragm — so the region carries both.
+   -------------------------------------------------------------------------- */
+const AIRWAY_C = [228, 216, 200];
+const CART_C   = [212, 220, 224];
+const ASM_C    = [222, 108, 120];
+const LUNG_C   = [240, 164, 166];
+const ALV_C    = [242, 190, 190];
+
+function nrm(v) { const L = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / L, v[1] / L, v[2] / L]; }
+function crs(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+function add(p, d, k) { return [p[0] + d[0] * k, p[1] + d[1] * k, p[2] + d[2] * k]; }
+
+function buildLungs(T, S) {
+  /* one full breath every ~4.6 s */
+  const br = S.anim ? 0.5 - 0.5 * Math.cos(T * 1.36) : 0.35;
+  const con = S.contract;                       /* bronchoconstriction, 0–1 */
+  const lit = k => S.sel === k ? 0.30 : 0;
+  const grow = 1 + 0.085 * br;
+  const drop = 0.16 * br;                       /* the bases descend as the dome flattens */
+  const lumen = 1 - 0.62 * con;                 /* airway calibre */
+
+  /* ---- trachea and its cartilage rings ---- */
+  tube({
+    path: bez([0, 2.62, 0], [0, 1.62, 0]), radius: () => 0.145 * (1 - 0.10 * con),
+    segs: 6, radial: 12, color: AIRWAY_C,
+    gloss: 0.3, rim: 0.5, amb: 0.30, pick: 'trachea', glow: lit('trachea')
+  });
+  for (let i = 0; i < 8; i++) {
+    const y = 2.56 - i * 0.125;
+    /* C-shaped: open behind, where the oesophagus runs */
+    tube({
+      path: t => [0, y - 0.014 + t * 0.028, 0], radius: () => 0.168,
+      segs: 1, radial: 15, a0: -0.40 * Math.PI, a1: 1.18 * Math.PI,
+      color: CART_C, dbl: true, gloss: 0.45, rim: 0.5, amb: 0.34,
+      pick: 'cartilage', glow: lit('cartilage')
+    });
+  }
+
+  /* ---- the bronchial tree ---- */
+  const tips = [], alv = [];
+  function tree(p, dir, len, rad, depth, spread, ax) {
+    const q = add(p, dir, len);
+    const key = depth > 2 ? 'bronchus' : 'bronchiole';
+    tube({
+      path: bez(p, q), radius: () => rad * lumen,
+      segs: 3, radial: depth > 2 ? 7 : 5, color: AIRWAY_C,
+      gloss: 0.32, rim: 0.5, amb: 0.30, pick: key, glow: lit(key)
+    });
+    if (depth <= 0) { tips.push(q); return; }
+    const perp = nrm(crs(dir, ax));
+    const nax = dir;
+    [-1, 1].forEach(sg => {
+      const d = nrm([dir[0] * Math.cos(spread) + perp[0] * sg * Math.sin(spread),
+                     dir[1] * Math.cos(spread) + perp[1] * sg * Math.sin(spread),
+                     dir[2] * Math.cos(spread) + perp[2] * sg * Math.sin(spread)]);
+      tree(q, d, len * 0.72, rad * 0.70, depth - 1, spread * 0.92, nax);
+    });
+  }
+
+  /* right main bronchus is wider, shorter and more vertical than the left —
+     which is why an inhaled object lands in the right lung */
+  tree([0, 1.62, 0], nrm([-0.46, -0.88, 0.02]), 0.60, 0.105, 4, 0.52, [0, 0, 1]);
+  tree([0, 1.62, 0], nrm([0.74, -0.67, 0.02]), 0.52, 0.088, 4, 0.52, [0, 0, 1]);
+
+  /* alveolar clusters on a few terminal tips */
+  tips.forEach((q, i) => {
+    if (i % 5) return;
+    alv.push([q[0], q[1] - 0.05, q[2] + 0.06]);
+    for (let k = 0; k < 5; k++) {
+      const a = k / 5 * TAU;
+      ellipsoid([q[0] + Math.cos(a) * 0.06, q[1] - 0.05, q[2] + Math.sin(a) * 0.06],
+        0.055, 0.055, 0.055, ALV_C,
+        { gloss: 0.5, rim: 0.45, amb: 0.38, pick: 'alveoli', glow: lit('alveoli') + 0.08 }, 7, 5);
+    }
+  });
+
+  /* ---- airway smooth muscle: spiral bands on the main bronchi ---- */
+  [[-0.46, -0.88, 0.105, -1], [0.74, -0.67, 0.088, 1]].forEach(mb => {
+    const dir = nrm([mb[0], mb[1], 0.02]);
+    const perp = nrm(crs(dir, [0, 0, 1]));
+    const up = crs(dir, perp);
+    for (let i = 0; i < 3; i++) {
+      const ph = i / 3 * TAU;
+      tube({
+        path: t => {
+          const c = add([0, 1.62, 0], dir, 0.10 + t * 0.52);
+          const rr = mb[2] * lumen + 0.028;
+          const a = ph + t * 5.4 * mb[3];
+          return [c[0] + perp[0] * Math.cos(a) * rr + up[0] * Math.sin(a) * rr,
+                  c[1] + perp[1] * Math.cos(a) * rr + up[1] * Math.sin(a) * rr,
+                  c[2] + perp[2] * Math.cos(a) * rr + up[2] * Math.sin(a) * rr];
+        },
+        radius: () => 0.020 + 0.014 * con, segs: 22, radial: 5, color: ASM_C,
+        gloss: 0.45, rim: 0.5, amb: 0.32 + 0.2 * con,
+        pick: 'asm', glow: lit('asm') + con * 0.22
+      });
+    }
+  });
+
+  /* ---- the lungs themselves, translucent so the tree reads through ---- */
+  const shell = (apex, base, bow, rmax, lobes, amod, pick) => {
+    const path = bez(apex, [base[0], base[1] - drop, base[2]], bow);
+    const prof = t => rmax * grow *
+      ramp(t, [[0, 0.15], [0.16, 0.38], [0.40, 0.65], [0.68, 0.87], [0.90, 1.0], [1, 0.93]]);
+    lobes.forEach(lo => {
+      const ts = [];
+      for (let i = 0; i <= 7; i++) ts.push(lo[0] + (lo[1] - lo[0]) * i / 7);
+      tube({
+        path, radius: prof, ts, radial: 15, oval: 0.06, amod,
+        color: (S.sel === 'lobes' || S.hover === pick) ? [246, 172, 174] : LUNG_C,
+        alpha: 0.38, dbl: true, gloss: 0.35, rim: 1.0, amb: 0.50,
+        pick: 'lobes', glow: lit('lobes')
+      });
+    });
+  };
+  /* right lung: three lobes. left: two, and a notch where the heart sits */
+  shell([-0.46, 2.34, 0.02], [-0.88, 0.10, -0.04], [-0.20, 0, 0.06], 0.60,
+        [[0, 0.40], [0.435, 0.635], [0.67, 1]], null, 'lobes');
+  const notch = (a, t) => 1 - 0.46 * Math.exp(-Math.pow((t - 0.46) * 3.4, 2))
+                              * Math.pow(Math.max(0, Math.cos(a - 0.78 * Math.PI)), 1.3);
+  shell([0.44, 2.34, 0.02], [0.86, 0.10, -0.04], [0.20, 0, 0.06], 0.56,
+        [[0, 0.50], [0.535, 1]], notch, 'lobes');
+
+  /* ---- the diaphragm: skeletal muscle radiating from a central tendon ---- */
+  const rimY = -0.30 - 0.06 * br;          /* the costal rim barely moves */
+  const domeY = 0.12 - 0.44 * br;          /* the central tendon descends, so the dome flattens */
+  for (let i = 0; i < 22; i++) {
+    const a = i / 22 * TAU;
+    muscleBelly({
+      from: [Math.cos(a) * 1.22, rimY + Math.sin(a) * 0.03, Math.sin(a) * 0.74],
+      to: [0, domeY, 0.02], bow: [0, 0.30 - 0.17 * br, 0],
+      w: 0.118, tendon: [0.00, 0.56], color: [206, 96, 100],
+      segs: 9, radial: 6, pick: 'diaphragm', glow: lit('diaphragm')
+    });
+  }
+
+  if (S.labels) {
+    label([0, 2.44, 0.15], 'Trachea', -128, -50, 'trachea');
+    label([0.15, 2.06, 0.12], 'Cartilage rings', 128, -58, 'cartilage');
+    label([-0.32, 1.30, 0.08], 'Right main bronchus', -206, 6, 'bronchus');
+    label([0.34, 1.30, 0.12], 'Airway smooth muscle', 150, -22, 'asm');
+    label(alv[0] || [0, 0.9, 0], 'Alveoli', -150, 40, 'alveoli');
+    label([-0.88, 1.28, 0.34], 'Oblique fissure', -186, -76, 'lobes');
+    label([0.66, 0.78, 0.34], 'Bronchioles', 150, 30, 'bronchiole');
+    label([0.34, domeY - 0.06, 0.42], 'Diaphragm', 130, 66, 'diaphragm');
+  }
+
+  return [['Tissue', 'smooth'],
+          ['Airway calibre', (lumen * 100).toFixed(0) + ' %'],
+          ['Phase', S.anim ? (br > 0.5 ? 'inspiration' : 'expiration') : 'held']];
+}
+
 function buildRegion(T, S) {
   const R = REGIONS[curRegion];
   if (curRegion === 'heart') return buildHeart(T, S);
   if (curRegion === 'gut') return buildGut(T, S);
+  if (curRegion === 'lungs') return buildLungs(T, S);
 
   (R.bones || []).forEach(b => bone(b));
   (R.muscles || []).forEach(m => {
@@ -3028,10 +3219,11 @@ function shortestYaw(from, to) {
   return from + d;
 }
 function tweenCam(v, target, ms) {
-  if (reduced) { Object.assign(v.cam, target); v.dirty = true; return; }
+  if (reduced) { Object.assign(v.cam, { ty: 0 }, target); v.dirty = true; return; }
   v.tween = {
-    from: { yaw: v.cam.yaw, pitch: v.cam.pitch, dist: v.cam.dist },
-    to: { yaw: shortestYaw(v.cam.yaw, target.yaw), pitch: target.pitch, dist: target.dist },
+    from: { yaw: v.cam.yaw, pitch: v.cam.pitch, dist: v.cam.dist, ty: v.cam.ty || 0 },
+    to: { yaw: shortestYaw(v.cam.yaw, target.yaw), pitch: target.pitch,
+          dist: target.dist, ty: target.ty || 0 },
     t0: performance.now(), ms: ms || 620
   };
   v.dirty = true;
@@ -3109,13 +3301,14 @@ function buildRegionControls() {
   const R = REGIONS[curRegion];
   elRegionControls.replaceChildren();
   if (R.anim) {
-    elRegionControls.appendChild(ctlButton(curRegion === 'heart' ? 'Beat' : 'Peristalsis',
+    elRegionControls.appendChild(ctlButton(
+      R.animLabel || (curRegion === 'heart' ? 'Beat' : 'Peristalsis'),
       regionState.anim, () => {
         regionState.anim = !regionState.anim;
         buildRegionControls(); V.region.dirty = true;
       }));
-    if (!regionState.anim) {
-      elRegionControls.appendChild(ctlSlider('Contract', 'sl-region',
+    if (R.sliderAlways || !regionState.anim) {
+      elRegionControls.appendChild(ctlSlider(R.sliderLabel || 'Contract', 'sl-region',
         regionState.contract * 100, 0, 100, v => { regionState.contract = v / 100; V.region.dirty = true; }));
     }
   }
@@ -3383,9 +3576,11 @@ function renderView(v, now) {
     v.cam.yaw = tw.from.yaw + (tw.to.yaw - tw.from.yaw) * e;
     v.cam.pitch = tw.from.pitch + (tw.to.pitch - tw.from.pitch) * e;
     v.cam.dist = tw.from.dist + (tw.to.dist - tw.from.dist) * e;
+    v.cam.ty = tw.from.ty + (tw.to.ty - tw.from.ty) * e;
     if (u >= 1) v.tween = null; else v.dirty = true;
   }
   const T = (now - t0) / 1000;
+  TY = cam.ty || 0;
   camSync();
   FOCAL = cam.fov * (v.basis === 'h' ? H : Math.min(W, H)) * (W < 560 && v.basis !== 'h' ? 0.66 : 0.86);
 
